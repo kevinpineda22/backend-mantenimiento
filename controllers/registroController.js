@@ -167,15 +167,15 @@ export const actualizarActividad = async (req, res) => {
   console.log("Cuerpo de la solicitud:", req.body); // Depura el cuerpo
 
   try {
-    const { data: actividad, error } = await supabase
+    const { data: activity, error } = await supabase
       .from("registro_mantenimiento")
       .select("*")
       .eq("id", id)
       .single();
 
-    console.log("Resultado de la consulta:", { actividad, error }); // Depura la consulta
+    console.log("Resultado de la consulta:", { activity, error }); // Depura la consulta
 
-    if (error || !actividad) {
+    if (error || !activity) {
       return res.status(404).json({ error: "Actividad no encontrada" });
     }
 
