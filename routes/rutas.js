@@ -5,6 +5,7 @@ import { obtenerHistorial } from '../controllers/registroController.js';
 import { registrarActividad } from '../controllers/registroController.js';
 import { obtenerHistorialActividades } from '../controllers/registroController.js';
 import { actualizarActividad } from '../controllers/registroController.js';
+import { eliminarActividad } from '../controllers/registroController.js';
 const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
