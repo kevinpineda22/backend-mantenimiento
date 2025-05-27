@@ -202,3 +202,39 @@ export const actualizarActividad = async (req, res) => {
     res.status(500).json({ error: "Error al actualizar la actividad" });
   }
 };
+
+/**
+ * Elimina una actividad de la tabla registro_mantenimiento según su ID.
+
+ */
+export const eliminarActividad = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Verificar si la actividad existe antes de eliminar
+    const { data: actividad, error: fetchError } = await supabase
+      .from("registro_mantenimiento")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !actividad) {
+      return res.status(404).json({ error: "Actividad no encontrada" });
+    }
+
+    // Eliminar la actividad
+    const { error: deleteError } = await supabase
+      .from("registro_mantenimiento")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    res.json({ message: "Actividad eliminada correctamente" });
+  } catch (error) {
+    console.error("Error en eliminarActividad:", error);
+    res.status(500).json({ error: "Error al eliminar la actividad" });
+  }
+};
