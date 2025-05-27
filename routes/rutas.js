@@ -29,6 +29,6 @@ router.get('/historialactividades', obtenerHistorialActividades);
 router.put('/actividades/:id', actualizarActividad);
 
 // Nueva ruta para eliminar actividades
-router.delete('/api/actividades/:id', eliminarActividad);
+router.delete('/actividades/:id', eliminarActividad);
 
 export default router;
