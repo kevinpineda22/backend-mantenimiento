@@ -161,7 +161,7 @@ export const obtenerHistorialActividades = async (req, res) => {
 //metodo put
 export const actualizarActividad = async (req, res) => {
   const { id } = req.params;
-  const { estado, precio, observacion, fechaInicio, fechaFinal } = req.body;
+  const { estado, precio, observacion, fechaInicio, fechaFinal, sede, actividad } = req.body;
 
   console.log("ID recibido:", id); // Depura el ID
   console.log("Cuerpo de la solicitud:", req.body); // Depura el cuerpo
@@ -182,6 +182,8 @@ export const actualizarActividad = async (req, res) => {
     const { error: updateError } = await supabase
       .from("registro_mantenimiento")
       .update({
+        sede,
+        actividad,
         estado,
         precio,
         observacion,
