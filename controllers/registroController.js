@@ -96,6 +96,7 @@ export const registrarActividad = async (req, res) => {
       precio,
       observacion,
       estado,
+      responsable,
     } = req.body;
 
     // Validar campos obligatorios
@@ -105,6 +106,8 @@ export const registrarActividad = async (req, res) => {
       !fechaInicio ||
       !fechaFinal ||
       !precio ||
+      !observacion ||
+      !responsable ||
       !estado
     ) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
@@ -122,6 +125,7 @@ export const registrarActividad = async (req, res) => {
           precio: parseFloat(precio),
           observacion,
           estado,
+          responsable,
         },
       ]);
 
@@ -161,7 +165,7 @@ export const obtenerHistorialActividades = async (req, res) => {
 //metodo put
 export const actualizarActividad = async (req, res) => {
   const { id } = req.params;
-  const { estado, precio, observacion, fechaInicio, fechaFinal, sede, actividad } = req.body;
+  const { estado, precio, observacion, fechaInicio, fechaFinal, sede, actividad,responsable } = req.body;
 
   console.log("ID recibido:", id); // Depura el ID
   console.log("Cuerpo de la solicitud:", req.body); // Depura el cuerpo
@@ -187,6 +191,7 @@ export const actualizarActividad = async (req, res) => {
         estado,
         precio,
         observacion,
+        responsable,
         fecha_inicio: fechaInicio, 
         fecha_final: fechaFinal,
       })
