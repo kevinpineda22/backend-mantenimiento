@@ -66,7 +66,7 @@ export const registrarFoto = async (req, res) => {
   }
 };
 
-// Obtener historial (sin cambios)
+// Obtener historial de registro fotográfico
 export const obtenerHistorial = async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -81,6 +81,83 @@ export const obtenerHistorial = async (req, res) => {
     res.status(500).json({ error: "Error al obtener el historial" });
   }
 };
+// Editar un registro fotográfico
+export const actualizarRegistroFotografico = async (req, res) => {
+  const { id } = req.params;
+  const { sede, observacion, responsable, fecha } = req.body;
+
+  try {
+    // Verificar si el registro existe
+    const { data: registro, error: fetchError } = await supabase
+      .from("registro_fotografico")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !registro) {
+      return res.status(404).json({ error: "Registro no encontrado" });
+    }
+
+    // Actualizar el registro
+    const { error: updateError } = await supabase
+      .from("registro_fotografico")
+      .update({
+        sede,
+        observacion,
+        responsable,
+        fecha,
+        urlAntes,
+        urlDespues,
+      })
+      .eq("id", id);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    res.json({ message: "Registro fotográfico actualizado correctamente" });
+  } catch (error) {
+    console.error("Error en actualizarRegistroFotografico:", error);
+    res.status(500).json({ error: "Error al actualizar el registro fotográfico" });
+  }
+};
+
+// Eliminar un registro fotográfico
+export const eliminarRegistroFotografico = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Verificar si el registro existe
+    const { data: registro, error: fetchError } = await supabase
+      .from("registro_fotografico")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !registro) {
+      return res.status(404).json({ error: "Registro no encontrado" });
+    }
+
+    // Eliminar el registro
+    const { error: deleteError } = await supabase
+      .from("registro_fotografico")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    res.json({ message: "Registro fotográfico eliminado correctamente" });
+  } catch (error) {
+    console.error("Error en eliminarRegistroFotografico:", error);
+    res.status(500).json({ error: "Error al eliminar el registro fotográfico" });
+  }
+};
+
+
+
+//////////////////////////////////////////////////////////////////////////
 
 // Nueva lógica para registrar actividades con logs y validaciones
 export const registrarActividad = async (req, res) => {
@@ -243,3 +320,4 @@ export const eliminarActividad = async (req, res) => {
     res.status(500).json({ error: "Error al eliminar la actividad" });
   }
 };
+
