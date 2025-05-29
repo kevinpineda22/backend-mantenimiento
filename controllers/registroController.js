@@ -85,6 +85,8 @@ export const obtenerHistorial = async (req, res) => {
 export const actualizarRegistroFotografico = async (req, res) => {
   const { id } = req.params;
   const { sede, observacion, responsable, fecha } = req.body;
+  const fotoAntes = req.files?.fotoAntes?.[0];
+  const fotoDespues = req.files?.fotoDespues?.[0];
 
   try {
     // Verificar si el registro existe
@@ -98,7 +100,38 @@ export const actualizarRegistroFotografico = async (req, res) => {
       return res.status(404).json({ error: "Registro no encontrado" });
     }
 
-    // Actualizar el registro
+    // Función para subir imagen si existe archivo nuevo
+    const subirImagen = async (file, carpeta) => {
+      const nombreLimpio = file.originalname
+        .replace(/\s/g, "_")
+        .replace(/\.[^/.]+$/, ".webp");
+      const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
+      const webpBuffer = await sharp(file.buffer)
+        .webp({ quality: 65 })
+        .toBuffer();
+      const { error } = await supabase.storage
+        .from("registro-fotos")
+        .upload(filePath, webpBuffer, {
+          contentType: "image/webp",
+        });
+      if (error) throw error;
+      const { data: publicUrlData } = supabase.storage
+        .from("registro-fotos")
+        .getPublicUrl(filePath);
+      return publicUrlData.publicUrl;
+    };
+
+    // Subir nuevas imágenes si se enviaron, si no, mantener las actuales
+    let urlAntes = registro.foto_antes_url;
+    let urlDespues = registro.foto_despues_url;
+    if (fotoAntes) {
+      urlAntes = await subirImagen(fotoAntes, "antes");
+    }
+    if (fotoDespues) {
+      urlDespues = await subirImagen(fotoDespues, "despues");
+    }
+
+    // Actualizar el registro con los datos y las URLs de imagen (nuevas o existentes)
     const { error: updateError } = await supabase
       .from("registro_fotografico")
       .update({
