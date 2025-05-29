@@ -106,8 +106,8 @@ export const actualizarRegistroFotografico = async (req, res) => {
         observacion,
         responsable,
         fecha,
-        urlAntes,
-        urlDespues,
+        foto_antes_url: urlAntes,
+        foto_despues_url: urlDespues,
       })
       .eq("id", id);
 
