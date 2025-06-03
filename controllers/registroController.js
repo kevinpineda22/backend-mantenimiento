@@ -3,7 +3,7 @@ import sharp from "sharp"; // Importar sharp para la conversión a WebP
 
 // Logica post
 export const registrarFoto = async (req, res) => {
-  const { sede, observacion, responsable, fecha } = req.body;
+  const { sede,responsable, fecha } = req.body;
   const fotoAntes = req.files?.fotoAntes?.[0];
   const fotoDespues = req.files?.fotoDespues?.[0];
 
@@ -52,7 +52,6 @@ export const registrarFoto = async (req, res) => {
           sede,
           foto_antes_url: urlAntes,
           foto_despues_url: urlDespues,
-          observacion,
           responsable,
         },
       ]);
@@ -84,7 +83,7 @@ export const obtenerHistorial = async (req, res) => {
 // Editar un registro fotográfico
 export const actualizarRegistroFotografico = async (req, res) => {
   const { id } = req.params;
-  const { sede, observacion, responsable, fecha } = req.body;
+  const { sede, responsable, fecha } = req.body;
   const fotoAntes = req.files?.fotoAntes?.[0];
   const fotoDespues = req.files?.fotoDespues?.[0];
 
@@ -136,7 +135,6 @@ export const actualizarRegistroFotografico = async (req, res) => {
       .from("registro_fotografico")
       .update({
         sede,
-        observacion,
         responsable,
         fecha,
         foto_antes_url: urlAntes,
@@ -204,7 +202,6 @@ export const registrarActividad = async (req, res) => {
       fechaInicio,
       fechaFinal,
       precio,
-      observacion,
       estado,
       responsable,
     } = req.body;
@@ -216,7 +213,6 @@ export const registrarActividad = async (req, res) => {
       !fechaInicio ||
       !fechaFinal ||
       !precio ||
-      !observacion ||
       !responsable ||
       !estado
     ) {
@@ -233,7 +229,6 @@ export const registrarActividad = async (req, res) => {
           fecha_inicio: fechaInicio,
           fecha_final: fechaFinal,
           precio: parseFloat(precio),
-          observacion,
           estado,
           responsable,
         },
@@ -275,7 +270,7 @@ export const obtenerHistorialActividades = async (req, res) => {
 //metodo put
 export const actualizarActividad = async (req, res) => {
   const { id } = req.params;
-  const { estado, precio, observacion, fechaInicio, fechaFinal, sede, actividad,responsable } = req.body;
+  const { estado, precio, fechaInicio, fechaFinal, sede, actividad,responsable } = req.body;
 
   console.log("ID recibido:", id); // Depura el ID
   console.log("Cuerpo de la solicitud:", req.body); // Depura el cuerpo
@@ -300,7 +295,6 @@ export const actualizarActividad = async (req, res) => {
         actividad,
         estado,
         precio,
-        observacion,
         responsable,
         fecha_inicio: fechaInicio, 
         fecha_final: fechaFinal,
