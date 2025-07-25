@@ -567,15 +567,15 @@ export const cargarExcelInventario = async (req, res) => {
         console.log("Encabezados LEÍDOS de Hoja 1 (limpios):", headers);
 
         const columnMap = {
-            "codigo": "codigo_activo_excel", // Capturamos el código si viene del Excel, no lo usaremos directamente para la BD
-            "nombre del activo": "nombre_activo",
-            "tipo de activo": "tipo_activo",
-            "sede": "sede",
-            "clasificacion por ubicacion": "clasificacion_ubicacion", // Ajustado según tu error anterior
-            "estado del activo": "estado_activo",
-            "frecuencia de mantenimiento": "frecuencia_mantenimiento", // Ajustado
-            "responsable de la gestion": "responsable_gestion" // Ajustado
-        };
+            "código": "codigo_activo_excel", // Tu Excel tiene tilde aquí
+            "nombre del activo": "nombre_activo",
+            "tipo de activo": "tipo_activo",
+            "sede": "sede",
+            "clasificación por ubicación": "clasificacion_ubicacion", // <--- ¡CORREGIDO: con tilde!
+            "estado del activo": "estado_activo",
+            "frecuencia de mantenimiento": "frecuencia_mantenimiento", // <--- ¡CORREGIDO: con tilde!
+            "responsable de gestión interno/externo": "responsable_gestion" // <--- ¡CORREGIDO: nombre completo!
+        };
 
         const requiredHeaders = Object.keys(columnMap).filter(key => key !== "codigo"); // El código no es obligatorio para la lógica de importación, se genera.
 
