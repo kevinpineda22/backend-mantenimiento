@@ -351,15 +351,20 @@ export const eliminarActividad = async (req, res) => {
   }
 };
 
-// Helper para generar código aleatorio
-// Formato: MT-(TIPO_ACTIVO_CORTO)-(NOMBRE_ACTIVO_CORTO)-(RANDOM)
-function generarCodigoActivo(tipoActivo, nombreActivo) {
-    const prefix = "MT";
-    const tipoPart = tipoActivo ? tipoActivo.toUpperCase().replace(/\s/g, '').substring(0, 3) : "GEN";
-    const nombrePart = nombreActivo ? nombreActivo.toUpperCase().replace(/\s/g, '').substring(0, 3) : "ACC";
-    const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `${prefix}-${tipoPart}-${nombrePart}-${randomPart}`;
+// Helper para generar código de activo
+// Formato deseado: MT-(TIPO_ACTIVO_CORTO)-(NOMBRE_ACTIVO_CORTO)
+function generarCodigoActivo(tipoActivoCorto, nombreActivo) {
+    const prefix = "MT";
+    // Asegurarse de que tipoActivoCorto siempre sea un string de 3 caracteres (o lo que esperes)
+    // Usaremos el tipoActivoCorto que viene de `tipos_activos.codigo_tipo`
+    const tipoPart = tipoActivoCorto ? tipoActivoCorto.toUpperCase().substring(0, 3) : "GEN"; 
+    // Primeras 3 letras del nombre del activo, sin espacios, en mayúsculas
+    const nombrePart = nombreActivo ? nombreActivo.toUpperCase().replace(/\s/g, '').substring(0, 3) : "ACC";
+    
+    // El nuevo formato de código
+    return `${prefix}-${tipoPart}-${nombrePart}`;
 }
+
 
 // Obtener Tipos de Activos desde la tabla 'tipos_activos'
 export const obtenerTiposDeActivos = async (req, res) => {
