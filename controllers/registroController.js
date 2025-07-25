@@ -591,24 +591,29 @@ export const cargarExcelInventario = async (req, res) => {
         }
 
 
-        // --- Procesar Hoja 1: Inventario de Mantenimiento ---
+       // --- Procesar Hoja 1: Inventario de Mantenimiento ---
         const inventarioWorksheet = workbook.getWorksheet(1); // Hoja 1
         const rowsToInsert = [];
 
-        const headers = inventarioWorksheet.getRow(1).values.map(header => typeof header === 'object' ? header.result : header)?.filter(Boolean).map(h => h.toLowerCase().trim());
-
-        // Mapear encabezados a nombres de columnas de la BD para validación y uso futuro
+        // Obtener encabezados de la Hoja 1, limpiar, convertir a minúsculas y trim
+        const headers = inventarioWorksheet.getRow(1).values
+            .map(h => (typeof h === 'object' && h !== null && h.richText) ? h.richText.map(part => part.text).join('') : h) // Manejar richText
+            .filter(Boolean) // Eliminar valores nulos/vacíos
+            .map(h => h.toString().toLowerCase().trim()); // Convertir a minúsculas y trim
+            
         const columnMap = {
+            "codigo": "codigo_activo_excel", // Capturamos el código si viene del Excel, no lo usaremos directamente para la BD
             "nombre del activo": "nombre_activo",
             "tipo de activo": "tipo_activo",
             "sede": "sede",
-            "clasificación por ubicación": "clasificacion_ubicacion",
+            "clasificacion por ubicacion": "clasificacion_ubicacion",
             "estado del activo": "estado_activo",
-            "frecuencia del mantenimiento": "frecuencia_mantenimiento",
-            "responsable de la gestión": "responsable_gestion"
+            "frecuencia de mantenimiento": "frecuencia_mantenimiento", // <--- CORRECCIÓN: "de" y sin tilde
+            "responsable de la gestion": "responsable_gestion" // <--- CORRECCIÓN: así es como viene en tu Excel
         };
 
-        const requiredHeaders = Object.keys(columnMap);
+        const requiredHeaders = Object.keys(columnMap).filter(key => key !== "codigo"); // El código no es obligatorio para la lógica de importación, se genera.
+
         const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
         if (missingHeaders.length > 0) {
             return res.status(400).json({ error: `Faltan los siguientes encabezados en la Hoja 1 del Excel: ${missingHeaders.join(", ")}. Por favor, asegúrate de que los encabezados coincidan exactamente (sin tildes, en minúsculas).` });
@@ -616,28 +621,32 @@ export const cargarExcelInventario = async (req, res) => {
 
 
         // Obtener los tipos de activos actuales para validación antes de insertar
-        const { data: allCurrentTipos, error: fetchAllTiposError } = await supabase.from('tipos_activos').select('nombre_tipo');
+        // Usamos los tipos que ya existen MÁS los que se pudieron insertar de la Hoja 2
+        const { data: allCurrentTipos, error: fetchAllTiposError } = await supabase.from('tipos_activos').select('nombre_tipo, codigo_tipo');
         if (fetchAllTiposError) throw fetchAllTiposError;
         const validTiposActivos = new Set(allCurrentTipos.map(t => t.nombre_tipo));
-        const tipoCodigoMap = new Map(currentTipos.map(t => [t.nombre_tipo, t.codigo_tipo])); // Para la generación del código de activo
+        const tipoCodigoMap = new Map(allCurrentTipos.map(t => [t.nombre_tipo, t.codigo_tipo]));
 
         for (let i = 2; i <= inventarioWorksheet.rowCount; i++) {
             const row = inventarioWorksheet.getRow(i);
             const rowData = {};
             let isEmptyRow = true;
 
-            for (let j = 0; j < headers.length; j++) {
-                const header = headers[j];
-                const dbColumnName = columnMap[header];
-                let cellValue = row.getCell(j + 1).value;
-
-                if (typeof cellValue === 'object' && cellValue !== null && cellValue.richText) {
-                    cellValue = cellValue.richText.map(textPart => textPart.text).join('');
+            const getCellValue = (cellIndex) => {
+                let value = row.getCell(cellIndex + 1).value;
+                if (typeof value === 'object' && value !== null && value.richText) {
+                    value = value.richText.map(part => part.text).join('');
                 }
-                if (cellValue === null || cellValue === undefined) cellValue = ""; // Normalizar nulls
+                return value ? value.toString().trim() : null;
+            };
+
+            for (let j = 0; j < headers.length; j++) {
+                const header = headers[j]; // Encabezado en minúsculas y trim
+                const dbColumnName = columnMap[header]; // Nombre de columna de la BD
 
                 if (dbColumnName) {
-                    rowData[dbColumnName] = cellValue?.toString().trim(); // Convertir a string y trim
+                    const cellValue = getCellValue(j);
+                    rowData[dbColumnName] = cellValue;
                     if (cellValue !== null && cellValue !== "") {
                         isEmptyRow = false;
                     }
@@ -647,17 +656,21 @@ export const cargarExcelInventario = async (req, res) => {
             if (!isEmptyRow) {
                 // Validar que el tipo de activo de la fila exista en los tipos conocidos
                 if (!validTiposActivos.has(rowData.tipo_activo)) {
-                    console.warn(`Advertencia: Tipo de activo no válido en la fila ${i}: '${rowData.tipo_activo}'. Se omitirá esta fila.`);
+                    console.warn(`Advertencia: Tipo de activo no válido en la fila ${i} de Hoja 1: '${rowData.tipo_activo}'. Se omitirá esta fila.`);
                     continue; // Saltar esta fila
                 }
 
-                // Generar código de activo
+                // Generar código de activo si no viene o si no queremos usar el del Excel
+                // Siempre generaremos el código con nuestra lógica para asegurar consistencia
                 const tipoCorto = tipoCodigoMap.get(rowData.tipo_activo);
                 if (tipoCorto) {
                     rowData.codigo_activo = generarCodigoActivo(tipoCorto, rowData.nombre_activo);
                 } else {
-                    rowData.codigo_activo = generarCodigoActivo("GEN", rowData.nombre_activo); // Fallback
+                    rowData.codigo_activo = generarCodigoActivo("GEN", rowData.nombre_activo); // Fallback si no se encuentra el código corto
                 }
+
+                // Eliminar el código_activo_excel si se capturó para no insertarlo en la BD principal
+                delete rowData.codigo_activo_excel;
 
                 rowsToInsert.push(rowData);
             }
@@ -673,6 +686,10 @@ export const cargarExcelInventario = async (req, res) => {
 
         if (insertError) {
             console.error("Error al insertar datos de inventario desde Excel:", insertError);
+            // Capturar error de duplicado de código_activo y dar un mensaje más amigable
+            if (insertError.code === '23505' && insertError.details?.includes('codigo_activo')) {
+                return res.status(409).json({ error: "Error: Se intentaron insertar códigos de activo duplicados. Por favor, revisa tu archivo Excel o los registros existentes." });
+            }
             return res.status(500).json({ error: insertError.message });
         }
 
@@ -683,5 +700,4 @@ export const cargarExcelInventario = async (req, res) => {
         res.status(500).json({ error: error.message || "Error al procesar el archivo Excel." });
     }
 };
-
 
