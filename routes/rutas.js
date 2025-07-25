@@ -1,50 +1,61 @@
+// routes/rutas.js
+
 import express from 'express';
 import multer from 'multer';
-import { registrarFoto } from '../controllers/registroController.js';
-import { obtenerHistorial } from '../controllers/registroController.js';
-import { registrarActividad } from '../controllers/registroController.js';
-import { obtenerHistorialActividades } from '../controllers/registroController.js';
-import { actualizarActividad } from '../controllers/registroController.js';
-import { eliminarActividad } from '../controllers/registroController.js';
-import { actualizarRegistroFotografico } from '../controllers/registroController.js';
-import {eliminarRegistroFotografico} from '../controllers/registroController.js';
+import {
+    // Registro Fotográfico
+    registrarFoto,
+    obtenerHistorial,
+    actualizarRegistroFotografico,
+    eliminarRegistroFotografico,
+    // Registro de Actividades
+    registrarActividad,
+    obtenerHistorialActividades,
+    actualizarActividad,
+    eliminarActividad,
+    // Inventario de Mantenimiento (NUEVAS)
+    registrarInventario,
+    obtenerInventario,
+    actualizarInventario,
+    eliminarInventario,
+    cargarExcelInventario,
+    obtenerTiposDeActivos // NUEVA
+} from '../controllers/registroController.js'; // Asegúrate que el path es correcto
+
 const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 
-// Ruta para registrar una foto
-router.post(
-  '/registro',
-  upload.fields([
-    { name: 'fotoAntes', maxCount: 1 },
-    { name: 'fotoDespues', maxCount: 1 }
-  ]),
-  registrarFoto
-);
-
-// Ruta para obtener el historial de registros fotográficos
-router.get('/historial', obtenerHistorial); // ✅ nueva ruta GET
-
-// Ruta para actualizar un registro fotográfico
-router.put('/putRegistroFotografico/:id', upload.fields([
-  { name: 'fotoAntes', maxCount: 1 },
-  { name: 'fotoDespues', maxCount: 1 }
-]), actualizarRegistroFotografico);
-
-// Ruta para eliminar un registro fotográfico
+// Rutas para Registro Fotográfico (EXISTENTES - NO CAMBIAN)
+router.post('/registro', upload.fields([{ name: 'fotoAntes', maxCount: 1 }, { name: 'fotoDespues', maxCount: 1 }]), registrarFoto);
+router.get('/historial', obtenerHistorial);
+router.put('/putRegistroFotografico/:id', upload.fields([{ name: 'fotoAntes', maxCount: 1 }, { name: 'fotoDespues', maxCount: 1 }]), actualizarRegistroFotografico);
 router.delete('/eliminarRegistroFotografico/:id', eliminarRegistroFotografico);
 
 
-
-// Nuevas rutas para registro de actividades
+// Rutas para Registro de Actividades (EXISTENTES - NO CAMBIAN)
 router.post('/actividades', registrarActividad);
 router.get('/historialactividades', obtenerHistorialActividades);
-
-// Nueva ruta para actualizar actividades
 router.put('/actividades/:id', actualizarActividad);
-
-// Nueva ruta para eliminar actividades
 router.delete('/actividades/:id', eliminarActividad);
+
+
+// ***************************************************************
+// NUEVAS RUTAS PARA INVENTARIO DE MANTENIMIENTO
+// ***************************************************************
+
+// Ruta para obtener los tipos de activos (desde Hoja 2)
+router.get('/inventario/tipos-activos', obtenerTiposDeActivos);
+
+// Rutas CRUD para activos de inventario
+router.post('/inventario', registrarInventario);
+router.get('/inventario', obtenerInventario); // Esta ruta servirá también para Hoja de Vida
+router.put('/inventario/:id', actualizarInventario);
+router.delete('/inventario/:id', eliminarInventario);
+
+// Ruta para carga masiva de inventario desde Excel
+router.post('/inventario/upload-excel', upload.single('excelFile'), cargarExcelInventario);
+
 
 export default router;
