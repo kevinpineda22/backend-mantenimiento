@@ -534,142 +534,141 @@ export const eliminarInventario = async (req, res) => {
     }
 };
 
-// Cargar Excel con datos de inventario y tipos de activos
+// Cargar Excel con datos de inventario
 export const cargarExcelInventario = async (req, res) => {
-    const excelFile = req.file;
+    const excelFile = req.file;
 
-    if (!excelFile) {
-        return res.status(400).json({ error: "No se encontró el archivo Excel" });
-    }
+    if (!excelFile) {
+        return res.status(400).json({ error: "No se encontró el archivo Excel" });
+    }
 
-    try {
-        const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(excelFile.buffer);
+    try {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(excelFile.buffer);
 
-        // --- ELIMINAR O COMENTAR ESTA SECCIÓN DE PROCESAR HOJA 2 ---
-        // if (workbook.getWorksheet(2)) { // Verifica si la Hoja 2 existe, pero la lógica de carga NO va aquí
-        //     console.warn("Advertencia: Se encontró una Hoja 2. No se procesará para tipos de activos, ya que estos deben ser pre-cargados.");
-        // }
-        // -----------------------------------------------------------
+        // --- Procesar Hoja 1: Inventario de Mantenimiento ---
+        const inventarioWorksheet = workbook.getWorksheet(1); // Hoja 1
+        
+        if (!inventarioWorksheet) {
+            return res.status(400).json({ error: "No se encontró la Hoja 1 'Inventario de Mantenimiento' en el archivo Excel." });
+        }
 
+        console.log("Total de filas en la Hoja 1 (incluyendo encabezados):", inventarioWorksheet.rowCount); // DEPURACIÓN: Cuántas filas detecta ExcelJS
 
-       // --- Procesar Hoja 1: Inventario de Mantenimiento ---
-        const inventarioWorksheet = workbook.getWorksheet(1); // Hoja 1
-        
-        if (!inventarioWorksheet) {
-            return res.status(400).json({ error: "No se encontró la Hoja 1 'Inventario de Mantenimiento' en el archivo Excel." });
-        }
+        const rowsToInsert = [];
 
-        const rowsToInsert = [];
+        // Obtener encabezados de la Hoja 1, limpiar, convertir a minúsculas y trim
+        const headers = inventarioWorksheet.getRow(1).values
+            .map(h => (typeof h === 'object' && h !== null && h.richText) ? h.richText.map(part => part.text).join('') : h)
+            .filter(Boolean)
+            .map(h => h.toString().toLowerCase().trim());
+            
+        console.log("Encabezados LEÍDOS de Hoja 1 (limpios):", headers); // DEPURACIÓN: Encabezados procesados
 
-        // Obtener encabezados de la Hoja 1, limpiar, convertir a minúsculas y trim
-        const headers = inventarioWorksheet.getRow(1).values
-            .map(h => (typeof h === 'object' && h !== null && h.richText) ? h.richText.map(part => part.text).join('') : h) // Manejar richText
-            .filter(Boolean) // Eliminar valores nulos/vacíos
-            .map(h => h.toString().toLowerCase().trim()); // Convertir a minúsculas y trim
-            
-        // *** LOG DEPURACIÓN ***
-        console.log("Encabezados LEÍDOS de Hoja 1 (limpios):", headers);
-
-        const columnMap = {
+        const columnMap = {
             "código": "codigo_activo_excel", // Tu Excel tiene tilde aquí
             "nombre del activo": "nombre_activo",
             "tipo de activo": "tipo_activo",
             "sede": "sede",
-            "clasificación por ubicación": "clasificacion_ubicacion", // <--- ¡CORREGIDO: con tilde!
+            "clasificación por ubicación": "clasificacion_ubicacion", // <--- CORREGIDO: con tilde!
             "estado del activo": "estado_activo",
-            "frecuencia de mantenimiento": "frecuencia_mantenimiento", // <--- ¡CORREGIDO: con tilde!
-            "responsable de gestión interno/externo": "responsable_gestion" // <--- ¡CORREGIDO: nombre completo!
+            "frecuencia de mantenimiento": "frecuencia_mantenimiento", // <--- CORREGIDO: con tilde!
+            "responsable de gestión interno/externo": "responsable_gestion" // <--- CORREGIDO: nombre completo!
         };
 
-        const requiredHeaders = Object.keys(columnMap).filter(key => key !== "codigo"); // El código no es obligatorio para la lógica de importación, se genera.
+        const requiredHeaders = Object.keys(columnMap).filter(key => key !== "codigo");
 
-        const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
-        if (missingHeaders.length > 0) {
-            console.error("ENCABEZADOS FALTANTES SEGÚN columnMap:", missingHeaders); // *** LOG DEPURACIÓN ***
-            return res.status(400).json({ error: `Faltan los siguientes encabezados en la Hoja 1 del Excel: ${missingHeaders.join(", ")}. Por favor, asegúrate de que los encabezados coincidan exactamente (sin tildes, en minúsculas).` });
-        }
+        const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
+        if (missingHeaders.length > 0) {
+            console.error("ENCABEZADOS FALTANTES SEGÚN columnMap:", missingHeaders); // DEPURACIÓN
+            return res.status(400).json({ error: `Faltan los siguientes encabezados en la Hoja 1 del Excel: ${missingHeaders.join(", ")}. Por favor, asegúrate de que los encabezados coincidan exactamente (incluyendo tildes si las tienen y en minúsculas).` });
+        }
 
+        // Obtener los tipos de activos actuales para validación (ya deben estar precargados)
+        const { data: allCurrentTipos, error: fetchAllTiposError } = await supabase.from('tipos_activos').select('nombre_tipo, codigo_tipo');
+        if (fetchAllTiposError) {
+            console.error("Error al obtener tipos de activos de Supabase:", fetchAllTiposError); // DEPURACIÓN
+            throw new Error("No se pudieron cargar los tipos de activos para validación.");
+        }
+        const validTiposActivos = new Set(allCurrentTipos.map(t => t.nombre_tipo));
+        const tipoCodigoMap = new Map(allCurrentTipos.map(t => [t.nombre_tipo, t.codigo_tipo]));
 
-        // Obtener los tipos de activos actuales para validación (ya deben estar precargados)
-        const { data: allCurrentTipos, error: fetchAllTiposError } = await supabase.from('tipos_activos').select('nombre_tipo, codigo_tipo');
-        if (fetchAllTiposError) {
-            console.error("Error al obtener tipos de activos de Supabase:", fetchAllTiposError);
-            throw new Error("No se pudieron cargar los tipos de activos para validación.");
-        }
-        const validTiposActivos = new Set(allCurrentTipos.map(t => t.nombre_tipo));
-        const tipoCodigoMap = new Map(allCurrentTipos.map(t => [t.nombre_tipo, t.codigo_tipo]));
+        // Bucle de lectura de filas
+        for (let i = 2; i <= inventarioWorksheet.rowCount; i++) { // Empieza desde la fila 2 (después de los encabezados)
+            const row = inventarioWorksheet.getRow(i);
+            const rowData = {};
+            let isEmptyRow = true;
 
-        for (let i = 2; i <= inventarioWorksheet.rowCount; i++) { // Empieza desde la fila 2 (después de los encabezados)
-            const row = inventarioWorksheet.getRow(i);
-            const rowData = {};
-            let isEmptyRow = true;
+            const getCellValue = (cellIndex) => {
+                let value = row.getCell(cellIndex + 1).value; // +1 porque ExcelJS es 1-indexado para celdas
+                if (typeof value === 'object' && value !== null && value.richText) {
+                    value = value.richText.map(part => part.text).join('');
+                }
+                return value ? value.toString().trim() : null;
+            };
 
-            const getCellValue = (cellIndex) => {
-                let value = row.getCell(cellIndex + 1).value; // +1 porque ExcelJS es 1-indexado para celdas
-                if (typeof value === 'object' && value !== null && value.richText) {
-                    value = value.richText.map(part => part.text).join('');
-                }
-                return value ? value.toString().trim() : null;
-            };
+            // Itera sobre los encabezados que hemos detectado, para obtener los valores de las celdas en el orden correcto
+            for (let j = 0; j < headers.length; j++) {
+                const header = headers[j]; // Encabezado en minúsculas y trim
+                const dbColumnName = columnMap[header]; // Nombre de columna de la BD
 
-            for (let j = 0; j < headers.length; j++) { // Itera por los encabezados leídos
-                const header = headers[j]; // Encabezado en minúsculas y trim
-                const dbColumnName = columnMap[header]; // Nombre de columna de la BD
+                if (dbColumnName) { // Solo si es un encabezado que nos interesa
+                    const cellValue = getCellValue(j); // Usa el índice j de headers (0-indexado) para obtener el valor de la celda
+                    rowData[dbColumnName] = cellValue;
+                    if (cellValue !== null && cellValue !== "") {
+                        isEmptyRow = false;
+                    }
+                }
+            }
 
-                if (dbColumnName) { // Solo si es un encabezado que nos interesa
-                    const cellValue = getCellValue(j); // Usa el índice j de headers (0-indexado)
-                    rowData[dbColumnName] = cellValue;
-                    if (cellValue !== null && cellValue !== "") {
-                        isEmptyRow = false;
-                    }
-                }
-            }
+            console.log(`DEPURACIÓN: Fila ${i} procesada. Datos:`, rowData); // DEPURACIÓN: Datos de cada fila
+            console.log(`DEPURACIÓN: Fila ${i} ¿Está vacía?:`, isEmptyRow); // DEPURACIÓN
 
-            if (!isEmptyRow) {
-                // Validar que el tipo de activo de la fila exista en los tipos conocidos
-                if (!rowData.tipo_activo || !validTiposActivos.has(rowData.tipo_activo)) {
-                    console.warn(`Advertencia: Tipo de activo no válido o ausente en la fila ${i} de Hoja 1: '${rowData.tipo_activo}'. Se omitirá esta fila.`);
-                    continue; // Saltar esta fila
-                }
+            if (!isEmptyRow) {
+                // Validar que el tipo de activo de la fila exista en los tipos conocidos
+                if (!rowData.tipo_activo || !validTiposActivos.has(rowData.tipo_activo)) {
+                    console.warn(`Advertencia: Tipo de activo no válido o ausente en la fila ${i} de Hoja 1: '${rowData.tipo_activo}'. Se omitirá esta fila.`);
+                    continue; // Saltar esta fila
+                }
 
-                // Generar código de activo si no viene o si no queremos usar el del Excel
-                // Siempre generaremos el código con nuestra lógica para asegurar consistencia
-                const tipoCorto = tipoCodigoMap.get(rowData.tipo_activo);
-                if (tipoCorto) {
-                    rowData.codigo_activo = generarCodigoActivo(tipoCorto, rowData.nombre_activo);
-                } else {
-                    rowData.codigo_activo = generarCodigoActivo("GEN", rowData.nombre_activo); // Fallback si no se encuentra el código corto
-                }
+                // Generar código de activo
+                const tipoCorto = tipoCodigoMap.get(rowData.tipo_activo);
+                if (tipoCorto) {
+                    rowData.codigo_activo = generarCodigoActivo(tipoCorto, rowData.nombre_activo);
+                } else {
+                    rowData.codigo_activo = generarCodigoActivo("GEN", rowData.nombre_activo); // Fallback si no se encuentra el código corto
+                }
 
-                // Eliminar el código_activo_excel si se capturó para no insertarlo en la BD principal
-                delete rowData.codigo_activo_excel;
+                delete rowData.codigo_activo_excel; // Eliminar el código del Excel si se capturó
 
-                rowsToInsert.push(rowData);
-            }
-        }
+                rowsToInsert.push(rowData);
+            }
+        }
 
-        if (rowsToInsert.length === 0) {
-            return res.status(400).json({ message: "El archivo Excel no contiene datos válidos para el inventario en la Hoja 1." });
-        }
+        console.log("DEPURACIÓN: Número de registros a insertar:", rowsToInsert.length); // DEPURACIÓN: Cuántos registros se prepararon
+        console.log("DEPURACIÓN: Primer registro a insertar:", rowsToInsert[0]); // DEPURACIÓN: Primer registro para verificar
+        console.log("DEPURACIÓN: Último registro a insertar:", rowsToInsert[rowsToInsert.length - 1]); // DEPURACIÓN: Último registro para verificar
 
-        const { error: insertError } = await supabase
-            .from("inventario_mantenimiento")
-            .insert(rowsToInsert);
+        if (rowsToInsert.length === 0) {
+            return res.status(400).json({ message: "El archivo Excel no contiene datos válidos para el inventario en la Hoja 1." });
+        }
 
-        if (insertError) {
-            console.error("Error al insertar datos de inventario desde Excel:", insertError);
-            // Capturar error de duplicado de código_activo y dar un mensaje más amigable
-            if (insertError.code === '23505' && insertError.details?.includes('codigo_activo')) {
-                return res.status(409).json({ error: "Error: Se intentaron insertar códigos de activo duplicados. Por favor, revisa tu archivo Excel o los registros existentes." });
-            }
-            return res.status(500).json({ error: insertError.message });
-        }
+        const { error: insertError } = await supabase
+            .from("inventario_mantenimiento")
+            .insert(rowsToInsert); // Insertar todos los registros a la vez
 
-        res.status(200).json({ message: `Se insertaron ${rowsToInsert.length} registros de inventario desde el Excel.` });
+        if (insertError) {
+            console.error("Error al insertar datos de inventario desde Excel:", insertError); // DEPURACIÓN
+            if (insertError.code === '23505' && insertError.details?.includes('codigo_activo')) {
+                return res.status(409).json({ error: "Error: Se intentaron insertar códigos de activo duplicados. Por favor, revisa tu archivo Excel o los registros existentes." });
+            }
+            return res.status(500).json({ error: insertError.message });
+        }
 
-    } catch (error) {
-        console.error("Error al procesar el archivo Excel:", error);
-        res.status(500).json({ error: error.message || "Error al procesar el archivo Excel." });
-    }
+        res.status(200).json({ message: `Se insertaron ${rowsToInsert.length} registros de inventario desde el Excel.` });
+
+    } catch (error) {
+        console.error("Error general al procesar el archivo Excel:", error); // DEPURACIÓN
+        res.status(500).json({ error: error.message || "Error al procesar el archivo Excel." });
+    }
 };
