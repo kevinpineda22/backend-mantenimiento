@@ -1,28 +1,28 @@
-// backend-mantenimiento/controllers/registroActividadController.js (UNIFICADO)
+// backend-mantenimiento/controllers/registroActividadController.js (ACTUALIZADO)
 
 import supabase from "../supabase/cliente.js";
-import sharp from "sharp";
+import sharp from "sharp"; // Mantenemos la importación de sharp por si es útil en el futuro, pero no se usa en esta lógica
 
 // Función auxiliar para subir y optimizar imágenes
 const subirImagen = async (file, carpeta) => {
     if (!file) return null;
     const nombreLimpio = file.originalname
-        .replace(/\s/g, "_")
-        .replace(/\.[^/.]+$/, ".webp");
+        .replace(/\s/g, "_");
     const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
+
     try {
-        const webpBuffer = await sharp(file.buffer)
-            .webp({ quality: 65 })
-            .toBuffer();
+        // Subir el archivo directamente con su tipo original
         const { error } = await supabase.storage
             .from("registro-fotos")
-            .upload(filePath, webpBuffer, {
-                contentType: "image/webp",
+            .upload(filePath, file.buffer, {
+                contentType: file.mimetype,
             });
         if (error) throw error;
+
         const { data: publicUrlData } = supabase.storage
             .from("registro-fotos")
             .getPublicUrl(filePath);
+
         return publicUrlData.publicUrl;
     } catch (err) {
         console.error("Error al subir imagen:", err);
@@ -36,19 +36,22 @@ export const registrarActividadCompleta = async (req, res) => {
         actividad,
         fechaInicio,
         fechaFinal,
-        precio,
+        precio, // Ahora es opcional
         estado,
         responsable,
     } = req.body;
     const fotoAntes = req.files?.fotoAntes?.[0];
     const fotoDespues = req.files?.fotoDespues?.[0];
 
+    // Validación de campos obligatorios
+    if (!sede || !actividad || !fechaInicio || !estado || !responsable) {
+        return res.status(400).json({ error: "Faltan campos obligatorios: sede, actividad, fechaInicio, estado, y responsable." });
+    }
+
     try {
-        // Subir las imágenes si existen
         const urlAntes = fotoAntes ? await subirImagen(fotoAntes, "antes") : null;
         const urlDespues = fotoDespues ? await subirImagen(fotoDespues, "despues") : null;
 
-        // Insertar el registro de actividad con las URLs de las fotos
         const { error: insertError } = await supabase
             .from("registro_mantenimiento")
             .insert([
@@ -57,7 +60,7 @@ export const registrarActividadCompleta = async (req, res) => {
                     actividad,
                     fecha_inicio: fechaInicio,
                     fecha_final: fechaFinal,
-                    precio: parseFloat(precio),
+                    precio: precio ? parseFloat(precio) : null, // El precio ahora puede ser null
                     estado,
                     responsable,
                     foto_antes_url: urlAntes,
@@ -98,13 +101,18 @@ export const actualizarActividadCompleta = async (req, res) => {
         sede,
         actividad,
         estado,
-        precio,
+        precio, // Ahora es opcional
         responsable,
         fechaInicio,
         fechaFinal
     } = req.body;
     const fotoAntes = req.files?.fotoAntes?.[0];
     const fotoDespues = req.files?.fotoDespues?.[0];
+
+    // Validación de campos obligatorios
+    if (!sede || !actividad || !fechaInicio || !estado || !responsable) {
+        return res.status(400).json({ error: "Faltan campos obligatorios: sede, actividad, fechaInicio, estado, y responsable." });
+    }
 
     try {
         const { data: registroExistente, error: fetchError } = await supabase
@@ -126,7 +134,7 @@ export const actualizarActividadCompleta = async (req, res) => {
                 sede,
                 actividad,
                 estado,
-                precio,
+                precio: precio ? parseFloat(precio) : null, // El precio ahora puede ser null
                 responsable,
                 fecha_inicio: fechaInicio,
                 fecha_final: fechaFinal,
@@ -160,9 +168,6 @@ export const eliminarActividadCompleta = async (req, res) => {
             return res.status(404).json({ error: "Registro no encontrado" });
         }
 
-        // Nota: La eliminación de archivos de Supabase debe manejarse con cuidado.
-        // Por simplicidad, esta función solo elimina el registro de la base de datos.
-        // Una lógica más robusta buscaría y eliminaría los archivos asociados del bucket.
         const { error: deleteError } = await supabase
             .from("registro_mantenimiento")
             .delete()
