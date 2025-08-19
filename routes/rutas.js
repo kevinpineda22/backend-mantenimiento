@@ -1,73 +1,58 @@
-// backend-mantenimiento/routes/rutas.js (o index.js)
+// backend-mantenimiento/routes/rutas.js (ACTUALIZADO)
 
 import express from 'express';
 import multer from 'multer';
 
 // Importa TODAS las funciones de TODOS los controladores
-// Asegúrate de que las rutas a los controladores son correctas
 import {
-    registrarFoto,
-    obtenerHistorial,
-    actualizarRegistroFotografico,
-    eliminarRegistroFotografico
-} from '../controllers/registroFotograficoController.js';
-
-import {
-    registrarActividad,
-    obtenerHistorialActividades,
-    actualizarActividad,
-    eliminarActividad
-} from '../controllers/registroActividadController.js';
-
-import {
-    registrarInventario,
-    obtenerInventario,
-    actualizarInventario,
-    eliminarInventario,
-    cargarExcelInventario,
-    obtenerTiposDeActivos
+    registrarInventario,
+    obtenerInventario,
+    actualizarInventario,
+    eliminarInventario,
+    cargarExcelInventario,
+    obtenerTiposDeActivos
 } from '../controllers/inventarioMantenimientoController.js';
+
+import {
+    registrarActividadCompleta,
+    obtenerHistorialCompleto,
+    actualizarActividadCompleta,
+    eliminarActividadCompleta
+} from '../controllers/registroActividadController.js'; // Ahora importamos las funciones unificadas
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() }); // Configuración de Multer para manejar archivos
 
 // =========================================
-// Rutas para el Módulo de Registro Fotográfico
+// Nuevas Rutas Unificadas para Actividades y Registros Fotográficos
 // =========================================
 router.post(
-    '/registro', // URL: /api/registro
-    upload.fields([
-        { name: 'fotoAntes', maxCount: 1 },
-        { name: 'fotoDespues', maxCount: 1 }
-    ]),
-    registrarFoto
+    '/actividades/full', // Endpoint para registrar actividad y fotos
+    upload.fields([
+        { name: 'fotoAntes', maxCount: 1 },
+        { name: 'fotoDespues', maxCount: 1 }
+    ]),
+    registrarActividadCompleta
 );
-router.get('/historial', obtenerHistorial); // URL: /api/historial
-router.put('/putRegistroFotografico/:id', 
-    upload.fields([
-        { name: 'fotoAntes', maxCount: 1 },
-        { name: 'fotoDespues', maxCount: 1 }
-    ]), 
-    actualizarRegistroFotografico
-); // URL: /api/putRegistroFotografico/:id
-router.delete('/eliminarRegistroFotografico/:id', eliminarRegistroFotografico); // URL: /api/eliminarRegistroFotografico/:id
+router.get('/historial-completo', obtenerHistorialCompleto); // Endpoint para obtener el historial completo
+router.put(
+    '/actividades/full/:id', // Endpoint para actualizar actividad y fotos
+    upload.fields([
+        { name: 'fotoAntes', maxCount: 1 },
+        { name: 'fotoDespues', maxCount: 1 }
+    ]),
+    actualizarActividadCompleta
+);
+router.delete('/actividades/full/:id', eliminarActividadCompleta); // Endpoint para eliminar actividad y fotos
 
 // =========================================
-// Rutas para el Módulo de Registro de Actividades
+// Rutas para el Módulo de Inventario de Mantenimiento (sin cambios)
 // =========================================
-router.post('/actividades', registrarActividad); // URL: /api/actividades
-router.get('/historialactividades', obtenerHistorialActividades); // URL: /api/historialactividades
-router.put('/actividades/:id', actualizarActividad); // URL: /api/actividades/:id
-router.delete('/actividades/:id', eliminarActividad); // URL: /api/actividades/:id
-
-// =========================================
-// Rutas para el Módulo de Inventario de Mantenimiento
-// =========================================
-router.get('/inventario/tipos-activos', obtenerTiposDeActivos); // URL: /api/inventario/tipos-activos
-router.post('/inventario', registrarInventario); // URL: /api/inventario
-router.get('/inventario', obtenerInventario); // URL: /api/inventario
-router.put('/inventario/:id', actualizarInventario); // URL: /api/inventario/:id
-router.delete('/inventario/:id', eliminarInventario); // URL: /api/inventario/:id
-router.post('/inventario/upload-excel', upload.single('excelFile'), cargarExcelInventario); // URL: /api/inventario/upload-excel
+router.get('/inventario/tipos-activos', obtenerTiposDeActivos);
+router.post('/inventario', registrarInventario);
+router.get('/inventario', obtenerInventario);
+router.put('/inventario/:id', actualizarInventario);
+router.delete('/inventario/:id', eliminarInventario);
+router.post('/inventario/upload-excel', upload.single('excelFile'), cargarExcelInventario);
 
 export default router;
