@@ -5,8 +5,7 @@
       "src": "server.js",
       "use": "@vercel/node",
       "config": {
-        "maxLambdaSize": "50mb",
-        "includeFiles": "node_modules/sharp/**"
+        "maxLambdaSize": "50mb"
       }
     }
   ],
@@ -20,8 +19,5 @@
     "server.js": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "SHARP_IGNORE_GLOBAL_LIBVIPS": "1"
   }
 }

@@ -1,7 +1,7 @@
 // backend-mantenimiento/controllers/registroActividadController.js (ACTUALIZADO CON OPTIMIZACIÓN)
 
 import supabase from "../supabase/cliente.js";
-import sharp from "sharp";
+import { optimizeImageToWebP, getImageInfo } from "../utils/imageOptimizer.js";
 
 // Función auxiliar para subir y optimizar imágenes
 const subirImagen = async (file, carpeta) => {
@@ -30,12 +30,22 @@ const subirImagen = async (file, carpeta) => {
   const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
 
   try {
+    // Obtener información de la imagen original
+    const originalInfo = await getImageInfo(file.buffer);
+    console.log(`Imagen original: ${originalInfo.sizeKB}KB (${originalInfo.width}x${originalInfo.height})`);
+    
     // Redimensiona y optimiza a WebP con calidad 65 y un ancho máximo de 800px.
     // Esto es ideal para las miniaturas del historial y para cargar rápido en móvil.
-    const webpBuffer = await sharp(file.buffer)
-      .resize({ width: 800, fit: "inside", withoutEnlargement: true })
-      .webp({ quality: 65 })
-      .toBuffer();
+    const webpBuffer = await optimizeImageToWebP(file.buffer, {
+      maxWidth: 800,
+      maxHeight: 800,
+      quality: 65
+    });
+
+    // Obtener información de la imagen optimizada
+    const optimizedInfo = await getImageInfo(webpBuffer);
+    console.log(`Imagen optimizada: ${optimizedInfo.sizeKB}KB (${optimizedInfo.width}x${optimizedInfo.height})`);
+    console.log(`Reducción: ${Math.round((1 - optimizedInfo.size / originalInfo.size) * 100)}%`);
 
     const { error } = await supabase.storage
       .from("registro-fotos")
