@@ -1,20 +1,46 @@
-// backend-mantenimiento/controllers/registroActividadController.js (ACTUALIZADO)
+// backend-mantenimiento/controllers/registroActividadController.js (ACTUALIZADO CON OPTIMIZACIÓN)
 
 import supabase from "../supabase/cliente.js";
-import sharp from "sharp"; // Mantenemos la importación de sharp por si es útil en el futuro, pero no se usa en esta lógica
+import sharp from "sharp";
 
 // Función auxiliar para subir y optimizar imágenes
 const subirImagen = async (file, carpeta) => {
   if (!file) return null;
-  const nombreLimpio = file.originalname.replace(/\s/g, "_");
-  const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
 
-  try {
-    // Subir el archivo directamente con su tipo original
+  // Manejar PDFs o archivos que no son imágenes (subida directa)
+  if (file.mimetype.includes("pdf")) {
+    const nombreLimpio = file.originalname.replace(/\s/g, "_");
+    const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
     const { error } = await supabase.storage
       .from("registro-fotos")
       .upload(filePath, file.buffer, {
         contentType: file.mimetype,
+      });
+    if (error) throw error;
+    const { data: publicUrlData } = supabase.storage
+      .from("registro-fotos")
+      .getPublicUrl(filePath);
+    return publicUrlData.publicUrl;
+  }
+
+  // ⭐ OPTIMIZACIÓN: Redimensionar y convertir a WebP para imágenes (JPEG/PNG)
+  const nombreLimpio = file.originalname
+    .replace(/\s/g, "_")
+    .replace(/\.[^/.]+$/, ".webp"); // Cambia extensión a .webp
+  const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
+
+  try {
+    // Redimensiona y optimiza a WebP con calidad 65 y un ancho máximo de 800px.
+    // Esto es ideal para las miniaturas del historial y para cargar rápido en móvil.
+    const webpBuffer = await sharp(file.buffer)
+      .resize({ width: 800, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 65 })
+      .toBuffer();
+
+    const { error } = await supabase.storage
+      .from("registro-fotos")
+      .upload(filePath, webpBuffer, {
+        contentType: "image/webp",
       });
     if (error) throw error;
 
@@ -24,8 +50,8 @@ const subirImagen = async (file, carpeta) => {
 
     return publicUrlData.publicUrl;
   } catch (err) {
-    console.error("Error al subir imagen:", err);
-    throw new Error("Error al subir imagen: " + err.message);
+    console.error("Error al subir imagen (WebP):", err);
+    throw new Error("Error al subir y optimizar imagen: " + err.message);
   }
 };
 
@@ -40,15 +66,14 @@ export const registrarActividadCompleta = async (req, res) => {
     responsable,
   } = req.body;
   const fotoAntes = req.files?.fotoAntes?.[0];
-  const fotoDespues = req.files?.fotoDespues?.[0]; // Validación de campos obligatorios
+  const fotoDespues = req.files?.fotoDespues?.[0];
 
+  // Validación de campos obligatorios
   if (!sede || !actividad || !fechaInicio || !estado || !responsable) {
-    return res
-      .status(400)
-      .json({
-        error:
-          "Faltan campos obligatorios: sede, actividad, fechaInicio, estado, y responsable.",
-      });
+    return res.status(400).json({
+      error:
+        "Faltan campos obligatorios: sede, actividad, fechaInicio, estado, y responsable.",
+    });
   }
 
   try {
@@ -81,11 +106,9 @@ export const registrarActividadCompleta = async (req, res) => {
       return res.status(500).json({ error: insertError.message });
     }
 
-    return res
-      .status(200)
-      .json({
-        message: "Actividad y registro fotográfico enviados exitosamente",
-      });
+    return res.status(200).json({
+      message: "Actividad y registro fotográfico enviados exitosamente",
+    });
   } catch (err) {
     console.error("Error general en registrarActividadCompleta:", err);
     return res
@@ -121,15 +144,14 @@ export const actualizarActividadCompleta = async (req, res) => {
     fechaFinal,
   } = req.body;
   const fotoAntes = req.files?.fotoAntes?.[0];
-  const fotoDespues = req.files?.fotoDespues?.[0]; // Validación de campos obligatorios
+  const fotoDespues = req.files?.fotoDespues?.[0];
 
+  // Validación de campos obligatorios
   if (!sede || !actividad || !fechaInicio || !estado || !responsable) {
-    return res
-      .status(400)
-      .json({
-        error:
-          "Faltan campos obligatorios: sede, actividad, fechaInicio, estado, y responsable.",
-      });
+    return res.status(400).json({
+      error:
+        "Faltan campos obligatorios: sede, actividad, fechaInicio, estado, y responsable.",
+    });
   }
 
   try {
@@ -214,9 +236,9 @@ export const eliminarImagenHistorial = async (req, res) => {
   const { tipo } = req.body; // 'antes' o 'despues'
 
   if (!id || !tipo || !["antes", "despues"].includes(tipo)) {
-    return res
-      .status(400)
-      .json({ error: "Faltan datos o tipo inválido ('antes' o 'despues')" });
+    return res.status(400).json({
+      error: "Faltan datos o tipo inválido ('antes' o 'despues')",
+    });
   }
 
   try {
@@ -235,25 +257,28 @@ export const eliminarImagenHistorial = async (req, res) => {
       tipo === "antes" ? registro.foto_antes_url : registro.foto_despues_url;
     if (!urlImagen) {
       return res.status(400).json({ error: "No hay imagen para eliminar" });
-    } // Extrae la ruta del archivo en el bucket desde la URL pública
+    }
 
+    // Extrae la ruta del archivo en el bucket desde la URL pública
     const pathMatch = urlImagen.match(/registro-fotos\/(.+)$/);
     if (!pathMatch) {
-      return res
-        .status(400)
-        .json({ error: "No se pudo extraer la ruta de la imagen" });
+      return res.status(400).json({
+        error: "No se pudo extraer la ruta de la imagen",
+      });
     }
-    const filePath = pathMatch[1]; // Elimina la imagen del bucket
+    const filePath = pathMatch[1];
 
+    // Elimina la imagen del bucket
     const { error: deleteError } = await supabase.storage
       .from("registro-fotos")
       .remove([filePath]);
     if (deleteError) {
-      return res
-        .status(500)
-        .json({ error: "Error al eliminar la imagen del storage" });
-    } // Actualiza el registro en la base de datos
+      return res.status(500).json({
+        error: "Error al eliminar la imagen del storage",
+      });
+    }
 
+    // Actualiza el registro en la base de datos
     const updateField =
       tipo === "antes" ? { foto_antes_url: null } : { foto_despues_url: null };
     const { error: updateError } = await supabase
