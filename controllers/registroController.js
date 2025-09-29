@@ -1,7 +1,6 @@
 // controllers/registroController.js
 
 import supabase from "../supabase/cliente.js";
-import { optimizeImageToWebP, getImageInfo } from "../utils/imageOptimizer.js";
 import ExcelJS from "exceljs"; // Importar ExcelJS para manejar archivos Excel
 
 // ===============================================
@@ -15,30 +14,15 @@ export const registrarFoto = async (req, res) => {
 
     try {
         const subirImagen = async (file, carpeta) => {
-            const nombreLimpio = file.originalname
-                .replace(/\s/g, "_")
-                .replace(/\.[^/.]+$/, ".webp");
+            const nombreLimpio = file.originalname.replace(/\s/g, "_");
             const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
 
-            // Obtener información de la imagen original
-            const originalInfo = await getImageInfo(file.buffer);
-            console.log(`Imagen original: ${originalInfo.sizeKB}KB (${originalInfo.width}x${originalInfo.height})`);
+            console.log(`Subiendo archivo: ${file.originalname} (${Math.round(file.size / 1024)}KB)`);
 
-            const webpBuffer = await optimizeImageToWebP(file.buffer, {
-                maxWidth: 1200,
-                maxHeight: 1200,
-                quality: 65
-            });
-
-            // Obtener información de la imagen optimizada
-            const optimizedInfo = await getImageInfo(webpBuffer);
-            console.log(`Imagen optimizada: ${optimizedInfo.sizeKB}KB (${optimizedInfo.width}x${optimizedInfo.height})`);
-            console.log(`Reducción: ${Math.round((1 - optimizedInfo.size / originalInfo.size) * 100)}%`);
-
-            const { data, error } = await supabase.storage
+            const { error } = await supabase.storage
                 .from("registro-fotos")
-                .upload(filePath, webpBuffer, {
-                    contentType: "image/webp",
+                .upload(filePath, file.buffer, {
+                    contentType: file.mimetype,
                 });
 
             if (error) throw error;
@@ -47,6 +31,7 @@ export const registrarFoto = async (req, res) => {
                 .from("registro-fotos")
                 .getPublicUrl(filePath);
 
+            console.log(`Archivo subido exitosamente: ${filePath}`);
             return publicUrlData.publicUrl;
         };
 
@@ -109,27 +94,22 @@ export const actualizarRegistroFotografico = async (req, res) => {
         }
 
         const subirImagen = async (file, carpeta) => {
-            const nombreLimpio = file.originalname
-                .replace(/\s/g, "_")
-                .replace(/\.[^/.]+$/, ".webp");
+            const nombreLimpio = file.originalname.replace(/\s/g, "_");
             const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
             
-            // Optimizar imagen a WebP
-            const webpBuffer = await optimizeImageToWebP(file.buffer, {
-                maxWidth: 1200,
-                maxHeight: 1200,
-                quality: 65
-            });
+            console.log(`Subiendo archivo: ${file.originalname} (${Math.round(file.size / 1024)}KB)`);
             
             const { error } = await supabase.storage
                 .from("registro-fotos")
-                .upload(filePath, webpBuffer, {
-                    contentType: "image/webp",
+                .upload(filePath, file.buffer, {
+                    contentType: file.mimetype,
                 });
             if (error) throw error;
             const { data: publicUrlData } = supabase.storage
                 .from("registro-fotos")
                 .getPublicUrl(filePath);
+            
+            console.log(`Archivo subido exitosamente: ${filePath}`);
             return publicUrlData.publicUrl;
         };
 

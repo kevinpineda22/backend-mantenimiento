@@ -1,75 +1,34 @@
-// backend-mantenimiento/controllers/registroActividadController.js (ACTUALIZADO CON OPTIMIZACIÓN)
+// backend-mantenimiento/controllers/registroActividadController.js
 
 import supabase from "../supabase/cliente.js";
-import { optimizeImageToWebP, getImageInfo } from "../utils/imageOptimizer.js";
 
-// Función auxiliar para subir y optimizar imágenes
+// Función auxiliar para subir imágenes sin procesamiento
 const subirImagen = async (file, carpeta) => {
   if (!file) return null;
 
-  // Manejar PDFs o archivos que no son imágenes (subida directa)
-  if (file.mimetype.includes("pdf")) {
-    const nombreLimpio = file.originalname.replace(/\s/g, "_");
-    const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
+  // Subir archivo directamente sin modificaciones
+  const nombreLimpio = file.originalname.replace(/\s/g, "_");
+  const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
+
+  try {
+    console.log(`Subiendo archivo: ${file.originalname} (${Math.round(file.size / 1024)}KB)`);
+
     const { error } = await supabase.storage
       .from("registro-fotos")
       .upload(filePath, file.buffer, {
         contentType: file.mimetype,
       });
     if (error) throw error;
-    const { data: publicUrlData } = supabase.storage
-      .from("registro-fotos")
-      .getPublicUrl(filePath);
-    return publicUrlData.publicUrl;
-  }
-
-  // ⭐ OPTIMIZACIÓN: Redimensionar y convertir a WebP para imágenes (JPEG/PNG)
-  const nombreLimpio = file.originalname
-    .replace(/\s/g, "_")
-    .replace(/\.[^/.]+$/, ".webp"); // Cambia extensión a .webp
-  const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
-
-  try {
-    // Obtener información de la imagen original
-    const originalInfo = await getImageInfo(file.buffer);
-    console.log(
-      `Imagen original: ${originalInfo.sizeKB}KB (${originalInfo.width}x${originalInfo.height})`
-    );
-
-    // Redimensiona y optimiza a WebP con calidad 65 y un ancho máximo de 800px.
-    // Esto es ideal para las miniaturas del historial y para cargar rápido en móvil.
-    const webpBuffer = await optimizeImageToWebP(file.buffer, {
-      maxWidth: 800,
-      maxHeight: 800,
-      quality: 65,
-    });
-
-    // Obtener información de la imagen optimizada
-    const optimizedInfo = await getImageInfo(webpBuffer);
-    console.log(
-      `Imagen optimizada: ${optimizedInfo.sizeKB}KB (${optimizedInfo.width}x${optimizedInfo.height})`
-    );
-    console.log(
-      `Reducción: ${Math.round(
-        (1 - optimizedInfo.size / originalInfo.size) * 100
-      )}%`
-    );
-
-    const { error } = await supabase.storage
-      .from("registro-fotos")
-      .upload(filePath, webpBuffer, {
-        contentType: "image/webp",
-      });
-    if (error) throw error;
 
     const { data: publicUrlData } = supabase.storage
       .from("registro-fotos")
       .getPublicUrl(filePath);
 
+    console.log(`Archivo subido exitosamente: ${filePath}`);
     return publicUrlData.publicUrl;
   } catch (err) {
-    console.error("Error al subir imagen (WebP):", err);
-    throw new Error("Error al subir y optimizar imagen: " + err.message);
+    console.error("Error al subir archivo:", err);
+    throw new Error("Error al subir archivo: " + err.message);
   }
 };
 
