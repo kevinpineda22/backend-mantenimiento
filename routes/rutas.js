@@ -1,4 +1,4 @@
-// backend-mantenimiento/routes/rutas.js (ACTUALIZADO)
+// backend-mantenimiento/routes/rutas.js (CORREGIDO)
 
 import express from "express";
 import multer from "multer";
@@ -18,41 +18,54 @@ import {
   obtenerHistorialCompleto,
   actualizarActividadCompleta,
   eliminarActividadCompleta,
-  eliminarImagenHistorial, // <-- importar la función
-  registrarTareaAsignada, // ⭐ Nueva función para asignación de tareas
-} from "../controllers/registroActividadController.js"; // Ahora importamos las funciones unificadas
+  eliminarImagenHistorial,
+  registrarTareaAsignada, // Función para asignación de tareas
+} from "../controllers/registroActividadController.js";
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() }); // Configuración de Multer para manejar archivos
+const upload = multer({ storage: multer.memoryStorage() }); // Configuración de Multer
 
 // =========================================
-// Nuevas Rutas Unificadas para Actividades y Registros Fotográficos
+// Rutas de Actividades y Registros Fotográficos
 // =========================================
-// ⭐ NUEVO: Endpoint para asignación de tareas (Líder/SST)
-router.post("/tareas/asignar", registrarTareaAsignada);
 
+// ⭐ CORRECCIÓN CLAVE: El endpoint de asignación debe manejar archivos.
 router.post(
-  "/actividades/full", // Endpoint para registrar actividad y fotos
+  "/tareas/asignar",
+  upload.fields([
+    { name: "fotoAntes", maxCount: 1 },
+    { name: "fotoDespues", maxCount: 1 },
+  ]),
+  registrarTareaAsignada // ⭐ NUEVO: Endpoint para asignación de tareas (Líder/SST)
+);
+
+// Endpoint para registro manual de actividad (Mantenimiento)
+router.post(
+  "/actividades/full",
   upload.fields([
     { name: "fotoAntes", maxCount: 1 },
     { name: "fotoDespues", maxCount: 1 },
   ]),
   registrarActividadCompleta
 );
-router.get("/historial-completo", obtenerHistorialCompleto); // Endpoint para obtener el historial completo
+
+router.get("/historial-completo", obtenerHistorialCompleto); // Historial general
+
+// Endpoint para actualizar actividad y fotos
 router.put(
-  "/actividades/full/:id", // Endpoint para actualizar actividad y fotos
+  "/actividades/full/:id",
   upload.fields([
     { name: "fotoAntes", maxCount: 1 },
     { name: "fotoDespues", maxCount: 1 },
   ]),
   actualizarActividadCompleta
 );
-router.delete("/actividades/full/:id", eliminarActividadCompleta); // Endpoint para eliminar actividad y fotos
+
+router.delete("/actividades/full/:id", eliminarActividadCompleta);
 router.post("/actividades/full/:id/eliminar-imagen", eliminarImagenHistorial);
 
 // =========================================
-// Rutas para el Módulo de Inventario de Mantenimiento (sin cambios)
+// Rutas para el Módulo de Inventario (se mantienen)
 // =========================================
 router.get("/inventario/tipos-activos", obtenerTiposDeActivos);
 router.post("/inventario", registrarInventario);
