@@ -112,6 +112,10 @@ export const registrarActividadCompleta = async (req, res) => {
   }
 
   try {
+    // ⭐ Convertir fechas de array a string si es necesario
+    const fechaInicioStr = Array.isArray(fechaInicio) ? fechaInicio[0] : fechaInicio;
+    const fechaFinalStr = Array.isArray(fechaFinal) ? fechaFinal[0] : fechaFinal;
+
     const urlAntes = fotoAntes ? await subirImagen(fotoAntes, "antes") : null;
     const urlDespues = fotoDespues
       ? await subirImagen(fotoDespues, "despues")
@@ -123,8 +127,8 @@ export const registrarActividadCompleta = async (req, res) => {
         {
           sede,
           actividad,
-          fecha_inicio: fechaInicio,
-          fecha_final: fechaFinal,
+          fecha_inicio: fechaInicioStr, // ⭐ Usar fecha corregida
+          fecha_final: fechaFinalStr, // ⭐ Usar fecha corregida
           precio: precio ? parseFloat(precio) : null, // El precio ahora puede ser null
           observacion, // ⭐ Se guarda la observación
           estado,
@@ -198,6 +202,10 @@ export const actualizarActividadCompleta = async (req, res) => {
   }
 
   try {
+    // ⭐ Convertir fechas de array a string si es necesario
+    const fechaInicioStr = Array.isArray(fechaInicio) ? fechaInicio[0] : fechaInicio;
+    const fechaFinalStr = Array.isArray(fechaFinal) ? fechaFinal[0] : fechaFinal;
+
     const { data: registroExistente, error: fetchError } = await supabase
       .from("registro_mantenimiento")
       // ⭐ SELECCIONAR creador_email y estado actual para la lógica de notificación
@@ -231,9 +239,10 @@ export const actualizarActividadCompleta = async (req, res) => {
         estado,
         precio: precio ? parseFloat(precio) : null, // El precio ahora puede ser null
         responsable,
-        fecha_inicio: fechaInicio,
-        fecha_final: fechaFinal,
+        fecha_inicio: fechaInicioStr, // ⭐ Usar fecha corregida
+        fecha_final: fechaFinalStr, // ⭐ Usar fecha corregida
         observacion, // ⭐ Se actualiza la observación
+        designado, // ⭐ Agregar el campo designado
         foto_antes_url: urlAntes,
         foto_despues_url: urlDespues,
       })
