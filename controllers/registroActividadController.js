@@ -1,7 +1,8 @@
 // backend-mantenimiento/controllers/registroActividadController.js (ACTUALIZADO)
 
 import supabase from "../supabase/cliente.js";
-import sharp from "sharp"; // Mantenemos la importación de sharp por si es útil en el futuro, pero no se usa en esta lógica
+import sharp from "sharp"; 
+import { sendEmail } from "../emailService.js"; // ⭐ IMPORTAR SERVICIO EXISTENTE
 
 // Función auxiliar para subir y optimizar imágenes
 const subirImagen = async (file, carpeta) => {
@@ -29,6 +30,63 @@ const subirImagen = async (file, carpeta) => {
   }
 };
 
+// ⭐ NUEVO: ENDPOINT PARA LA ASIGNACIÓN DE TAREAS (LÍDER/SST)
+export const registrarTareaAsignada = async (req, res) => {
+    const {
+        sede,
+        actividad,
+        fechaInicio,
+        fechaFinal,
+        precio,
+        estado,
+        responsable, // Correo del asignado
+        observacion, 
+        creadorEmail, // Correo de la persona que usa el formulario (Líder/SST)
+    } = req.body;
+    
+    if (!sede || !actividad || !fechaInicio || !estado || !responsable || !creadorEmail) {
+        return res.status(400).json({ error: "Faltan campos obligatorios para la asignación." });
+    }
+
+    try {
+        // 1. Guardar en la BD
+        const { error: insertError } = await supabase
+            .from("registro_mantenimiento")
+            .insert([{
+                sede,
+                actividad,
+                fecha_inicio: fechaInicio,
+                fecha_final: fechaFinal,
+                precio: precio ? parseFloat(precio) : null,
+                observacion, 
+                estado,
+                responsable, 
+                creador_email: creadorEmail, 
+            }]);
+
+        if (insertError) throw insertError;
+
+        // 2. Enviar Notificación por Correo
+        const subject = `🔧 Tarea de Mantenimiento Asignada: ${sede}`;
+        const htmlBody = `
+            <h2>¡Se te ha asignado una nueva tarea de mantenimiento!</h2>
+            <p><strong>Sede:</strong> ${sede}</p>
+            <p><strong>Actividad:</strong> ${actividad}</p>
+            <p><strong>Fecha Estimada:</strong> ${fechaInicio} - ${fechaFinal || 'N/A'}</p>
+            <p><strong>Observaciones:</strong> ${observacion || 'Ninguna'}</p>
+            <p><strong>Asignada por:</strong> ${creadorEmail}</p>
+            <p>Por favor, regístrate y sube la "Foto Antes" de inmediato.</p>
+        `;
+        
+        await sendEmail(responsable, subject, htmlBody); // Usando tu emailService
+
+        return res.status(200).json({ message: "Tarea asignada y notificada exitosamente." });
+    } catch (err) {
+        console.error("Error en registrarTareaAsignada:", err);
+        return res.status(500).json({ error: err.message || "Error interno del servidor al asignar la tarea" });
+    }
+};
+
 export const registrarActividadCompleta = async (req, res) => {
   const {
     sede,
@@ -38,6 +96,7 @@ export const registrarActividadCompleta = async (req, res) => {
     precio, // Ahora es opcional
     estado,
     responsable,
+    observacion, // ⭐ Agregado: Campo Observación
   } = req.body;
   const fotoAntes = req.files?.fotoAntes?.[0];
   const fotoDespues = req.files?.fotoDespues?.[0]; // Validación de campos obligatorios
@@ -66,6 +125,7 @@ export const registrarActividadCompleta = async (req, res) => {
           fecha_inicio: fechaInicio,
           fecha_final: fechaFinal,
           precio: precio ? parseFloat(precio) : null, // El precio ahora puede ser null
+          observacion, // ⭐ Se guarda la observación
           estado,
           responsable,
           foto_antes_url: urlAntes,
@@ -119,6 +179,8 @@ export const actualizarActividadCompleta = async (req, res) => {
     responsable,
     fechaInicio,
     fechaFinal,
+    observacion, // ⭐ Agregado: Campo Observación
+    notificarFinalizacion, // ⭐ Flag para notificación
   } = req.body;
   const fotoAntes = req.files?.fotoAntes?.[0];
   const fotoDespues = req.files?.fotoDespues?.[0]; // Validación de campos obligatorios
@@ -135,7 +197,8 @@ export const actualizarActividadCompleta = async (req, res) => {
   try {
     const { data: registroExistente, error: fetchError } = await supabase
       .from("registro_mantenimiento")
-      .select("foto_antes_url, foto_despues_url")
+      // ⭐ SELECCIONAR creador_email y estado actual para la lógica de notificación
+      .select("foto_antes_url, foto_despues_url, creador_email, estado, sede, actividad, responsable")
       .eq("id", id)
       .single();
 
@@ -152,6 +215,11 @@ export const actualizarActividadCompleta = async (req, res) => {
       ? await subirImagen(fotoDespues, "despues")
       : registroExistente.foto_despues_url;
 
+    // Lógica para determinar si la actividad está siendo finalizada por primera vez
+    const nuevoEstado = estado;
+    const yaEstabaCompletado = ['completado', 'no_completado'].includes(registroExistente.estado);
+    const estaFinalizando = ['completado', 'no_completado'].includes(nuevoEstado) && !yaEstabaCompletado;
+
     const { error: updateError } = await supabase
       .from("registro_mantenimiento")
       .update({
@@ -162,6 +230,7 @@ export const actualizarActividadCompleta = async (req, res) => {
         responsable,
         fecha_inicio: fechaInicio,
         fecha_final: fechaFinal,
+        observacion, // ⭐ Se actualiza la observación
         foto_antes_url: urlAntes,
         foto_despues_url: urlDespues,
       })
@@ -169,6 +238,19 @@ export const actualizarActividadCompleta = async (req, res) => {
 
     if (updateError) {
       throw updateError;
+    }
+    
+    // ⭐ LÓGICA DE NOTIFICACIÓN DE FINALIZACIÓN
+    if (notificarFinalizacion === "true" && estaFinalizando && registroExistente.creador_email) {
+        const subject = `✅ Tarea FINALIZADA: ${registroExistente.sede}`;
+        const htmlBody = `
+            <h2>La tarea que asignaste ha sido finalizada por: ${registroExistente.responsable}.</h2>
+            <p><strong>Estado:</strong> ${nuevoEstado === 'completado' ? 'Completada' : 'No Completada'}</p>
+            <p><strong>Sede:</strong> ${registroExistente.sede}</p>
+            <p><strong>Actividad:</strong> ${registroExistente.actividad}</p>
+            <p>Revisa el historial para ver la "Foto Después" y la Observación final.</p>
+        `;
+        await sendEmail(registroExistente.creador_email, subject, htmlBody);
     }
 
     res.json({ message: "Actividad actualizada correctamente" });

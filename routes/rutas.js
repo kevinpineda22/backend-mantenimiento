@@ -19,6 +19,7 @@ import {
   actualizarActividadCompleta,
   eliminarActividadCompleta,
   eliminarImagenHistorial, // <-- importar la función
+  registrarTareaAsignada, // ⭐ Nueva función para asignación de tareas
 } from "../controllers/registroActividadController.js"; // Ahora importamos las funciones unificadas
 
 const router = express.Router();
@@ -27,6 +28,9 @@ const upload = multer({ storage: multer.memoryStorage() }); // Configuración de
 // =========================================
 // Nuevas Rutas Unificadas para Actividades y Registros Fotográficos
 // =========================================
+// ⭐ NUEVO: Endpoint para asignación de tareas (Líder/SST)
+router.post("/tareas/asignar", registrarTareaAsignada);
+
 router.post(
   "/actividades/full", // Endpoint para registrar actividad y fotos
   upload.fields([
