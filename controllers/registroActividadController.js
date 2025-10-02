@@ -58,6 +58,10 @@ export const registrarTareaAsignada = async (req, res) => {
   }
 
   try {
+    // ⭐ Convertir fechas de array a string si es necesario
+    const fechaInicioStr = Array.isArray(fechaInicio) ? fechaInicio[0] : fechaInicio;
+    const fechaFinalStr = Array.isArray(fechaFinal) ? fechaFinal[0] : fechaFinal;
+
     // Subida de archivos (si el Líder/SST adjuntó algo)
     const urlAntes = fotoAntes ? await subirImagen(fotoAntes, "antes") : null;
     const urlDespues = fotoDespues ? await subirImagen(fotoDespues, "despues") : null;
@@ -68,8 +72,8 @@ export const registrarTareaAsignada = async (req, res) => {
       .insert([{
         sede,
         actividad,
-        fecha_inicio: fechaInicio,
-        fecha_final: fechaFinal,
+        fecha_inicio: fechaInicioStr, // ⭐ Usar fecha corregida
+        fecha_final: fechaFinalStr, // ⭐ Usar fecha corregida
         precio: precio ? parseFloat(precio) : null,
         observacion,
         estado,
@@ -85,16 +89,14 @@ export const registrarTareaAsignada = async (req, res) => {
     // ⭐ ENVIAR NOTIFICACIÓN POR CORREO (Trigger de asignación)
     const subject = `🔧 Tarea de Mantenimiento Asignada: ${sede}`;
     const htmlBody = `
-            <h2>¡Se te ha asignado una nueva tarea de mantenimiento!</h2>
-            <p><strong>Sede:</strong> ${sede}</p>
-            <p><strong>Actividad:</strong> ${actividad}</p>
-            <p><strong>Fecha Límite:</strong> ${fechaFinal || 'N/A'}</p>
-            <p><strong>Observaciones del Asignador:</strong> ${observacion || 'Ninguna'}</p>
-            <p><strong>Asignada por:</strong> ${creador_email}</p>
-            <p>Por favor, revisa el sistema para comenzar la ejecución.</p>
-        `;
-
-    await sendEmail(responsable, subject, htmlBody); // Envía al Email del RESPONSABLE
+            <h2>¡Se te ha asignado una nueva tarea de mantenimiento!</h2>
+            <p><strong>Sede:</strong> ${sede}</p>
+            <p><strong>Actividad:</strong> ${actividad}</p>
+            <p><strong>Fecha Límite:</strong> ${fechaFinalStr || 'N/A'}</p>
+            <p><strong>Observaciones del Asignador:</strong> ${observacion || 'Ninguna'}</p>
+            <p><strong>Asignada por:</strong> ${creador_email}</p>
+            <p>Por favor, revisa el sistema para comenzar la ejecución.</p>
+        `;    await sendEmail(responsable, subject, htmlBody); // Envía al Email del RESPONSABLE
 
     return res.status(200).json({ message: "Tarea asignada y notificada exitosamente." });
   } catch (err) {
