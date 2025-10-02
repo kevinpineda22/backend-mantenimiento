@@ -96,7 +96,7 @@ export const registrarTareaAsignada = async (req, res) => {
             <p><strong>Observaciones del Asignador:</strong> ${observacion || 'Ninguna'}</p>
             <p><strong>Asignada por:</strong> ${creador_email}</p>
             <p>Por favor, revisa el sistema para comenzar la ejecución.</p>
-        `;    await sendEmail(responsable, subject, htmlBody); // Envía al Email del RESPONSABLE
+        `; await sendEmail(responsable, subject, htmlBody); // Envía al Email del RESPONSABLE
 
     return res.status(200).json({ message: "Tarea asignada y notificada exitosamente." });
   } catch (err) {
@@ -359,5 +359,28 @@ export const eliminarImagenHistorial = async (req, res) => {
   } catch (error) {
     console.error("Error en eliminarImagenHistorial:", error);
     res.status(500).json({ error: "Error al eliminar la imagen" });
+  }
+};
+
+// ⭐ Asegúrate de que esta función exista al final del archivo:
+export const obtenerHistorialPorCreador = async (req, res) => {
+  const { creadorEmail } = req.query;
+
+  if (!creadorEmail) {
+    return res.status(400).json({ error: "El correo del creador es requerido para el filtro." });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("registro_mantenimiento")
+      .select("*")
+      .eq("creador_email", creadorEmail)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    res.status(200).json(data);
+  } catch (err) {
+    console.error("Error en obtenerHistorialPorCreador:", err);
+    res.status(500).json({ error: "Error al obtener el historial filtrado" });
   }
 };
