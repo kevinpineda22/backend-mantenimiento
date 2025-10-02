@@ -96,6 +96,7 @@ export const registrarActividadCompleta = async (req, res) => {
     precio, // Ahora es opcional
     estado,
     responsable,
+    designado,
     observacion, // ⭐ Agregado: Campo Observación
   } = req.body;
   const fotoAntes = req.files?.fotoAntes?.[0];
@@ -128,6 +129,7 @@ export const registrarActividadCompleta = async (req, res) => {
           observacion, // ⭐ Se guarda la observación
           estado,
           responsable,
+          designado,
           foto_antes_url: urlAntes,
           foto_despues_url: urlDespues,
         },
@@ -180,6 +182,7 @@ export const actualizarActividadCompleta = async (req, res) => {
     fechaInicio,
     fechaFinal,
     observacion, // ⭐ Agregado: Campo Observación
+    designado, // ⭐ Agregado: Campo Designado
     notificarFinalizacion, // ⭐ Flag para notificación
   } = req.body;
   const fotoAntes = req.files?.fotoAntes?.[0];
