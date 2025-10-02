@@ -1,7 +1,7 @@
 // backend-mantenimiento/controllers/registroActividadController.js (ACTUALIZADO)
 
 import supabase from "../supabase/cliente.js";
-import sharp from "sharp"; 
+import sharp from "sharp";
 import { sendEmail } from "../emailService.js"; // ⭐ IMPORTAR SERVICIO EXISTENTE
 
 // Función auxiliar para subir y optimizar imágenes
@@ -30,96 +30,110 @@ const subirImagen = async (file, carpeta) => {
   }
 };
 
-// ⭐ NUEVO: ENDPOINT PARA LA ASIGNACIÓN DE TAREAS (LÍDER/SST)
+
+// ==========================================================
+// 1. ENDPOINT DE ASIGNACIÓN (LÍDER/SST) - TIENE LÓGICA DE CORREO
+// ESTA FUNCIÓN DEBE SER LLAMADA POR EL FORMULARIO AsignarTarea.jsx
+// ==========================================================
 export const registrarTareaAsignada = async (req, res) => {
-    const {
+  // Nota: Cuando se usa Multer, todos los campos no-archivo llegan en req.body.
+  const {
+    sede,
+    actividad,
+    fechaInicio,
+    fechaFinal, // Usado como Fecha Límite
+    precio,
+    estado,
+    responsable, // Correo del asignado
+    observacion,
+    creador_email, // Correo del asignador
+  } = req.body;
+
+  // Archivos subidos por el Líder/SST
+  const fotoAntes = req.files?.fotoAntes?.[0];
+  const fotoDespues = req.files?.fotoDespues?.[0];
+
+  if (!sede || !actividad || !fechaInicio || !estado || !responsable || !creador_email) {
+    return res.status(400).json({ error: "Faltan campos obligatorios para la asignación." });
+  }
+
+  try {
+    // Subida de archivos (si el Líder/SST adjuntó algo)
+    const urlAntes = fotoAntes ? await subirImagen(fotoAntes, "antes") : null;
+    const urlDespues = fotoDespues ? await subirImagen(fotoDespues, "despues") : null;
+
+    // Inserción en la BD
+    const { error: insertError } = await supabase
+      .from("registro_mantenimiento")
+      .insert([{
         sede,
         actividad,
-        fechaInicio,
-        fechaFinal,
-        precio,
+        fecha_inicio: fechaInicio,
+        fecha_final: fechaFinal,
+        precio: precio ? parseFloat(precio) : null,
+        observacion,
         estado,
-        responsable, // Correo del asignado
-        observacion, 
-        creadorEmail, // Correo de la persona que usa el formulario (Líder/SST)
-    } = req.body;
-    
-    if (!sede || !actividad || !fechaInicio || !estado || !responsable || !creadorEmail) {
-        return res.status(400).json({ error: "Faltan campos obligatorios para la asignación." });
-    }
+        responsable,
+        // Nota: El campo 'designado' se deja NULL ya que no es usado por el asignador.
+        creador_email: creador_email,
+        foto_antes_url: urlAntes,
+        foto_despues_url: urlDespues,
+      }]);
 
-    try {
-        // 1. Guardar en la BD
-        const { error: insertError } = await supabase
-            .from("registro_mantenimiento")
-            .insert([{
-                sede,
-                actividad,
-                fecha_inicio: fechaInicio,
-                fecha_final: fechaFinal,
-                precio: precio ? parseFloat(precio) : null,
-                observacion, 
-                estado,
-                responsable, 
-                creador_email: creadorEmail, 
-            }]);
+    if (insertError) throw insertError;
 
-        if (insertError) throw insertError;
+    // ⭐ ENVIAR NOTIFICACIÓN POR CORREO (Trigger de asignación)
+    const subject = `🔧 Tarea de Mantenimiento Asignada: ${sede}`;
+    const htmlBody = `
+            <h2>¡Se te ha asignado una nueva tarea de mantenimiento!</h2>
+            <p><strong>Sede:</strong> ${sede}</p>
+            <p><strong>Actividad:</strong> ${actividad}</p>
+            <p><strong>Fecha Límite:</strong> ${fechaFinal || 'N/A'}</p>
+            <p><strong>Observaciones del Asignador:</strong> ${observacion || 'Ninguna'}</p>
+            <p><strong>Asignada por:</strong> ${creador_email}</p>
+            <p>Por favor, revisa el sistema para comenzar la ejecución.</p>
+        `;
 
-        // 2. Enviar Notificación por Correo
-        const subject = `🔧 Tarea de Mantenimiento Asignada: ${sede}`;
-        const htmlBody = `
-            <h2>¡Se te ha asignado una nueva tarea de mantenimiento!</h2>
-            <p><strong>Sede:</strong> ${sede}</p>
-            <p><strong>Actividad:</strong> ${actividad}</p>
-            <p><strong>Fecha Estimada:</strong> ${fechaInicio} - ${fechaFinal || 'N/A'}</p>
-            <p><strong>Observaciones:</strong> ${observacion || 'Ninguna'}</p>
-            <p><strong>Asignada por:</strong> ${creadorEmail}</p>
-            <p>Por favor, regístrate y sube la "Foto Antes" de inmediato.</p>
-        `;
-        
-        await sendEmail(responsable, subject, htmlBody); // Usando tu emailService
+    await sendEmail(responsable, subject, htmlBody); // Envía al Email del RESPONSABLE
 
-        return res.status(200).json({ message: "Tarea asignada y notificada exitosamente." });
-    } catch (err) {
-        console.error("Error en registrarTareaAsignada:", err);
-        return res.status(500).json({ error: err.message || "Error interno del servidor al asignar la tarea" });
-    }
+    return res.status(200).json({ message: "Tarea asignada y notificada exitosamente." });
+  } catch (err) {
+    console.error("Error en registrarTareaAsignada:", err);
+    return res.status(500).json({ error: err.message || "Error interno del servidor al asignar la tarea" });
+  }
 };
 
+
+// ==========================================================
+// 2. ENDPOINT DE REGISTRO MANUAL/ACTUALIZACIÓN
+// ESTA FUNCIÓN DEBE SER LLAMADA POR EL FORMULARIO RegistroActividad.jsx
+// ==========================================================
 export const registrarActividadCompleta = async (req, res) => {
   const {
     sede,
     actividad,
     fechaInicio,
     fechaFinal,
-    precio, // Ahora es opcional
+    precio,
     estado,
     responsable,
-    designado,
-    observacion, // ⭐ Agregado: Campo Observación
+    designado, // ⭐ CAPTURAR DESIGNADO
+    observacion,
+    creador_email, // Capturar si se envía (aunque normalmente no se envía aquí)
   } = req.body;
   const fotoAntes = req.files?.fotoAntes?.[0];
-  const fotoDespues = req.files?.fotoDespues?.[0]; // Validación de campos obligatorios
+  const fotoDespues = req.files?.fotoDespues?.[0];
 
   if (!sede || !actividad || !fechaInicio || !estado || !responsable) {
-    return res
-      .status(400)
-      .json({
-        error:
-          "Faltan campos obligatorios: sede, actividad, fechaInicio, estado, y responsable.",
-      });
+    return res.status(400).json({ error: "Faltan campos obligatorios." });
   }
 
   try {
-    // ⭐ Convertir fechas de array a string si es necesario
     const fechaInicioStr = Array.isArray(fechaInicio) ? fechaInicio[0] : fechaInicio;
     const fechaFinalStr = Array.isArray(fechaFinal) ? fechaFinal[0] : fechaFinal;
 
     const urlAntes = fotoAntes ? await subirImagen(fotoAntes, "antes") : null;
-    const urlDespues = fotoDespues
-      ? await subirImagen(fotoDespues, "despues")
-      : null;
+    const urlDespues = fotoDespues ? await subirImagen(fotoDespues, "despues") : null;
 
     const { error: insertError } = await supabase
       .from("registro_mantenimiento")
@@ -127,36 +141,28 @@ export const registrarActividadCompleta = async (req, res) => {
         {
           sede,
           actividad,
-          fecha_inicio: fechaInicioStr, // ⭐ Usar fecha corregida
-          fecha_final: fechaFinalStr, // ⭐ Usar fecha corregida
-          precio: precio ? parseFloat(precio) : null, // El precio ahora puede ser null
-          observacion, // ⭐ Se guarda la observación
+          fecha_inicio: fechaInicioStr,
+          fecha_final: fechaFinalStr,
+          precio: precio ? parseFloat(precio) : null,
+          observacion,
           estado,
           responsable,
-          designado,
+          designado, // ⭐ GUARDAR DESIGNADO
+          creador_email: creador_email, // Guardar si el mantenimiento crea su propia tarea y quiere registrarse como creador
           foto_antes_url: urlAntes,
           foto_despues_url: urlDespues,
         },
       ]);
 
     if (insertError) {
-      console.error(
-        "Error al insertar en Supabase (actividad completa):",
-        insertError
-      );
+      console.error("Error al insertar en Supabase (actividad completa):", insertError);
       return res.status(500).json({ error: insertError.message });
     }
 
-    return res
-      .status(200)
-      .json({
-        message: "Actividad y registro fotográfico enviados exitosamente",
-      });
+    return res.status(200).json({ message: "Actividad y registro fotográfico enviados exitosamente" });
   } catch (err) {
     console.error("Error general en registrarActividadCompleta:", err);
-    return res
-      .status(500)
-      .json({ error: err.message || "Error interno del servidor" });
+    return res.status(500).json({ error: err.message || "Error interno del servidor" });
   }
 };
 
@@ -175,58 +181,47 @@ export const obtenerHistorialCompleto = async (req, res) => {
   }
 };
 
+// ==========================================================
+// 3. ENDPOINT DE ACTUALIZACIÓN (TIENE LÓGICA DE CORREO DE FINALIZACIÓN)
+// ==========================================================
 export const actualizarActividadCompleta = async (req, res) => {
   const { id } = req.params;
   const {
     sede,
     actividad,
     estado,
-    precio, // Ahora es opcional
+    precio,
     responsable,
     fechaInicio,
     fechaFinal,
-    observacion, // ⭐ Agregado: Campo Observación
-    designado, // ⭐ Agregado: Campo Designado
-    notificarFinalizacion, // ⭐ Flag para notificación
+    observacion,
+    designado, // ⭐ CAPTURAR DESIGNADO
+    notificarFinalizacion,
   } = req.body;
   const fotoAntes = req.files?.fotoAntes?.[0];
-  const fotoDespues = req.files?.fotoDespues?.[0]; // Validación de campos obligatorios
+  const fotoDespues = req.files?.fotoDespues?.[0];
 
   if (!sede || !actividad || !fechaInicio || !estado || !responsable) {
-    return res
-      .status(400)
-      .json({
-        error:
-          "Faltan campos obligatorios: sede, actividad, fechaInicio, estado, y responsable.",
-      });
+    return res.status(400).json({ error: "Faltan campos obligatorios para actualizar." });
   }
 
   try {
-    // ⭐ Convertir fechas de array a string si es necesario
     const fechaInicioStr = Array.isArray(fechaInicio) ? fechaInicio[0] : fechaInicio;
     const fechaFinalStr = Array.isArray(fechaFinal) ? fechaFinal[0] : fechaFinal;
 
     const { data: registroExistente, error: fetchError } = await supabase
       .from("registro_mantenimiento")
-      // ⭐ SELECCIONAR creador_email y estado actual para la lógica de notificación
       .select("foto_antes_url, foto_despues_url, creador_email, estado, sede, actividad, responsable")
       .eq("id", id)
       .single();
 
     if (fetchError || !registroExistente) {
-      return res
-        .status(404)
-        .json({ error: "Registro de actividad no encontrado" });
+      return res.status(404).json({ error: "Registro de actividad no encontrado" });
     }
 
-    const urlAntes = fotoAntes
-      ? await subirImagen(fotoAntes, "antes")
-      : registroExistente.foto_antes_url;
-    const urlDespues = fotoDespues
-      ? await subirImagen(fotoDespues, "despues")
-      : registroExistente.foto_despues_url;
+    const urlAntes = fotoAntes ? await subirImagen(fotoAntes, "antes") : registroExistente.foto_antes_url;
+    const urlDespues = fotoDespues ? await subirImagen(fotoDespues, "despues") : registroExistente.foto_despues_url;
 
-    // Lógica para determinar si la actividad está siendo finalizada por primera vez
     const nuevoEstado = estado;
     const yaEstabaCompletado = ['completado', 'no_completado'].includes(registroExistente.estado);
     const estaFinalizando = ['completado', 'no_completado'].includes(nuevoEstado) && !yaEstabaCompletado;
@@ -237,12 +232,12 @@ export const actualizarActividadCompleta = async (req, res) => {
         sede,
         actividad,
         estado,
-        precio: precio ? parseFloat(precio) : null, // El precio ahora puede ser null
+        precio: precio ? parseFloat(precio) : null,
         responsable,
-        fecha_inicio: fechaInicioStr, // ⭐ Usar fecha corregida
-        fecha_final: fechaFinalStr, // ⭐ Usar fecha corregida
-        observacion, // ⭐ Se actualiza la observación
-        designado, // ⭐ Agregar el campo designado
+        fecha_inicio: fechaInicioStr,
+        fecha_final: fechaFinalStr,
+        observacion,
+        designado, // ⭐ ACTUALIZAR DESIGNADO
         foto_antes_url: urlAntes,
         foto_despues_url: urlDespues,
       })
@@ -251,18 +246,18 @@ export const actualizarActividadCompleta = async (req, res) => {
     if (updateError) {
       throw updateError;
     }
-    
+
     // ⭐ LÓGICA DE NOTIFICACIÓN DE FINALIZACIÓN
     if (notificarFinalizacion === "true" && estaFinalizando && registroExistente.creador_email) {
-        const subject = `✅ Tarea FINALIZADA: ${registroExistente.sede}`;
-        const htmlBody = `
-            <h2>La tarea que asignaste ha sido finalizada por: ${registroExistente.responsable}.</h2>
-            <p><strong>Estado:</strong> ${nuevoEstado === 'completado' ? 'Completada' : 'No Completada'}</p>
-            <p><strong>Sede:</strong> ${registroExistente.sede}</p>
-            <p><strong>Actividad:</strong> ${registroExistente.actividad}</p>
-            <p>Revisa el historial para ver la "Foto Después" y la Observación final.</p>
-        `;
-        await sendEmail(registroExistente.creador_email, subject, htmlBody);
+      const subject = `✅ Tarea FINALIZADA: ${registroExistente.sede}`;
+      const htmlBody = `
+            <h2>La tarea que asignaste ha sido finalizada por: ${registroExistente.responsable}.</h2>
+            <p><strong>Estado:</strong> ${nuevoEstado === 'completado' ? 'Completada' : 'No Completada'}</p>
+            <p><strong>Sede:</strong> ${registroExistente.sede}</p>
+            <p><strong>Actividad:</strong> ${registroExistente.actividad}</p>
+            <p>Revisa el historial para ver la "Foto Después" y la Observación final.</p>
+        `;
+      await sendEmail(registroExistente.creador_email, subject, htmlBody);
     }
 
     res.json({ message: "Actividad actualizada correctamente" });
