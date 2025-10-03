@@ -21,6 +21,7 @@ import {
   eliminarImagenHistorial,
   registrarTareaAsignada, // Función para asignación de tareas
   obtenerHistorialPorCreador,
+  obtenerHistorialPorResponsable, // ⭐ NUEVA FUNCIÓN
 } from "../controllers/registroActividadController.js";
 
 const router = express.Router();
@@ -52,6 +53,7 @@ router.post(
 
 router.get("/historial-completo", obtenerHistorialCompleto); // Historial general
 router.get("/historial-por-creador", obtenerHistorialPorCreador);
+router.get("/historial-por-responsable", obtenerHistorialPorResponsable); // ⭐ NUEVA RUTA
 
 // Endpoint para actualizar actividad y fotos
 router.put(

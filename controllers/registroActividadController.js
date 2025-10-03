@@ -401,3 +401,26 @@ export const obtenerHistorialPorCreador = async (req, res) => {
     res.status(500).json({ error: "Error al obtener el historial filtrado" });
   }
 };
+
+// ⭐ NUEVO ENDPOINT: Obtener historial filtrado por responsable (tareas asignadas A MÍ)
+export const obtenerHistorialPorResponsable = async (req, res) => {
+  const { responsableEmail } = req.query;
+
+  if (!responsableEmail) {
+    return res.status(400).json({ error: "El correo del responsable es requerido para el filtro." });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("registro_mantenimiento")
+      .select("*")
+      .eq("responsable", responsableEmail)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    res.status(200).json(data);
+  } catch (err) {
+    console.error("Error en obtenerHistorialPorResponsable:", err);
+    res.status(500).json({ error: "Error al obtener el historial filtrado por responsable" });
+  }
+};
