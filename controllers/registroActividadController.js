@@ -249,20 +249,37 @@ export const actualizarActividadCompleta = async (req, res) => {
       throw updateError;
     }
 
-    // ⭐ LÓGICA DE NOTIFICACIÓN DE FINALIZACIÓN
+    // ⭐ LÓGICA DE NOTIFICACIÓN DE FINALIZACIÓN MEJORADA
+    // Condición: Solo envía si el frontend manda el flag Y si el estado no estaba ya finalizado en la BD.
     if (notificarFinalizacion === "true" && estaFinalizando && registroExistente.creador_email) {
-      const subject = `✅ Tarea FINALIZADA: ${registroExistente.sede}`;
-      const htmlBody = `
-            <h2>La tarea que asignaste ha sido finalizada por: ${registroExistente.responsable}.</h2>
-            <p><strong>Estado:</strong> ${nuevoEstado === 'completado' ? 'Completada' : 'No Completada'}</p>
-            <p><strong>Sede:</strong> ${registroExistente.sede}</p>
-            <p><strong>Actividad:</strong> ${registroExistente.actividad}</p>
-            <p>Revisa el historial para ver la "Foto Después" y la Observación final.</p>
-        `;
-      await sendEmail(registroExistente.creador_email, subject, htmlBody);
-    }
-
-    res.json({ message: "Actividad actualizada correctamente" });
+      try {
+        const estadoTexto = nuevoEstado === 'completado' ? '✅ COMPLETADA' : '❌ NO COMPLETADA';
+        const subject = `${estadoTexto}: Tarea en ${registroExistente.sede}`;
+        
+        const htmlBody = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: ${nuevoEstado === 'completado' ? '#28a745' : '#dc3545'};">
+              ${estadoTexto}
+            </h2>
+            <p><strong>📍 Sede:</strong> ${registroExistente.sede}</p>
+            <p><strong>🔧 Actividad:</strong> ${registroExistente.actividad}</p>
+            <p><strong>👤 Ejecutada por:</strong> ${registroExistente.responsable}</p>
+            <p><strong>📅 Fecha de finalización:</strong> ${new Date().toLocaleDateString('es-ES')}</p>
+            ${observacion ? `<p><strong>📝 Observación final:</strong> ${observacion}</p>` : ''}
+            <hr style="margin: 20px 0;">
+            <p style="color: #666;">
+              Revisa el historial del sistema para ver las fotos y detalles completos de la tarea.
+            </p>
+          </div>
+        `;
+        
+        await sendEmail(registroExistente.creador_email, subject, htmlBody);
+        console.log(`📧 Notificación de finalización enviada a: ${registroExistente.creador_email}`);
+      } catch (emailError) {
+        console.error("❌ Error al enviar notificación de finalización:", emailError);
+        // No fallar la actualización si el email falla
+      }
+    }    res.json({ message: "Actividad actualizada correctamente" });
   } catch (error) {
     console.error("Error en actualizarActividadCompleta:", error);
     res.status(500).json({ error: "Error al actualizar la actividad" });
