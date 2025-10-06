@@ -91,9 +91,8 @@ export const registrarTareaAsignada = async (req, res) => {
     const htmlBody = `
             <h2>¡Se te ha asignado una nueva tarea de mantenimiento!</h2>
             <p><strong>Sede:</strong> ${sede}</p>
-            <p><strong>Actividad:</strong> ${actividad}</p>
+            <p><strong>Hallazgo:</strong> ${actividad}</p>
             <p><strong>Fecha Límite:</strong> ${fechaFinalStr || 'N/A'}</p>
-            <p><strong>Observaciones del Asignador:</strong> ${observacion || 'Ninguna'}</p>
             <p><strong>Asignada por:</strong> ${creador_email}</p>
             <p>Por favor, revisa el sistema para comenzar la ejecución.</p>
         `; await sendEmail(responsable, subject, htmlBody); // Envía al Email del RESPONSABLE
@@ -106,67 +105,6 @@ export const registrarTareaAsignada = async (req, res) => {
 };
 
 
-// ==========================================================
-// 2. ENDPOINT DE REGISTRO MANUAL/ACTUALIZACIÓN
-// ESTA FUNCIÓN DEBE SER LLAMADA POR EL FORMULARIO RegistroActividad.jsx
-// ==========================================================
-export const registrarActividadCompleta = async (req, res) => {
-  const {
-    sede,
-    actividad,
-    fechaInicio,
-    fechaFinal,
-    precio,
-    estado,
-    responsable,
-    designado, // ⭐ CAPTURAR DESIGNADO
-    observacion,
-    creador_email, // Capturar si se envía (aunque normalmente no se envía aquí)
-  } = req.body;
-  const fotoAntes = req.files?.fotoAntes?.[0];
-  const fotoDespues = req.files?.fotoDespues?.[0];
-
-  if (!sede || !actividad || !fechaInicio || !estado || !responsable) {
-    return res.status(400).json({ error: "Faltan campos obligatorios." });
-  }
-
-  try {
-    const fechaInicioStr = Array.isArray(fechaInicio) ? fechaInicio[0] : fechaInicio;
-    const fechaFinalStr = Array.isArray(fechaFinal) ? fechaFinal[0] : fechaFinal;
-
-    const urlAntes = fotoAntes ? await subirImagen(fotoAntes, "antes") : null;
-    const urlDespues = fotoDespues ? await subirImagen(fotoDespues, "despues") : null;
-
-    const { error: insertError } = await supabase
-      .from("registro_mantenimiento")
-      .insert([
-        {
-          sede,
-          actividad,
-          fecha_inicio: fechaInicioStr,
-          fecha_final: fechaFinalStr,
-          precio: precio ? parseFloat(precio) : null,
-          observacion,
-          estado,
-          responsable,
-          designado, // ⭐ GUARDAR DESIGNADO
-          creador_email: creador_email, // Guardar si el mantenimiento crea su propia tarea y quiere registrarse como creador
-          foto_antes_url: urlAntes,
-          foto_despues_url: urlDespues,
-        },
-      ]);
-
-    if (insertError) {
-      console.error("Error al insertar en Supabase (actividad completa):", insertError);
-      return res.status(500).json({ error: insertError.message });
-    }
-
-    return res.status(200).json({ message: "Actividad y registro fotográfico enviados exitosamente" });
-  } catch (err) {
-    console.error("Error general en registrarActividadCompleta:", err);
-    return res.status(500).json({ error: err.message || "Error interno del servidor" });
-  }
-};
 
 export const obtenerHistorialCompleto = async (req, res) => {
   try {
@@ -262,10 +200,10 @@ export const actualizarActividadCompleta = async (req, res) => {
               ${estadoTexto}
             </h2>
             <p><strong>📍 Sede:</strong> ${registroExistente.sede}</p>
-            <p><strong>🔧 Actividad:</strong> ${registroExistente.actividad}</p>
+            <p><strong>🔧 Hallazgo:</strong> ${registroExistente.actividad}</p>
             <p><strong>👤 Ejecutada por:</strong> ${registroExistente.responsable}</p>
             <p><strong>📅 Fecha de finalización:</strong> ${new Date().toLocaleDateString('es-ES')}</p>
-            ${observacion ? `<p><strong>📝 Observación final:</strong> ${observacion}</p>` : ''}
+            ${observacion ? `<p><strong>📝 Seguimiento final:</strong> ${observacion}</p>` : ''}
             <hr style="margin: 20px 0;">
             <p style="color: #666;">
               Revisa el historial del sistema para ver las fotos y detalles completos de la tarea.

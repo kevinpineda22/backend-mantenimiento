@@ -14,7 +14,6 @@ import {
 } from "../controllers/inventarioMantenimientoController.js";
 
 import {
-  registrarActividadCompleta,
   obtenerHistorialCompleto,
   actualizarActividadCompleta,
   eliminarActividadCompleta,
@@ -41,15 +40,7 @@ router.post(
   registrarTareaAsignada // ⭐ NUEVO: Endpoint para asignación de tareas (Líder/SST)
 );
 
-// Endpoint para registro manual de actividad (Mantenimiento)
-router.post(
-  "/actividades/full",
-  upload.fields([
-    { name: "fotoAntes", maxCount: 1 },
-    { name: "fotoDespues", maxCount: 1 },
-  ]),
-  registrarActividadCompleta
-);
+
 
 router.get("/historial-completo", obtenerHistorialCompleto); // Historial general
 router.get("/historial-por-creador", obtenerHistorialPorCreador);
