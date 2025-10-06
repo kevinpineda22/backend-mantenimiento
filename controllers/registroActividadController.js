@@ -295,13 +295,12 @@ export const actualizarActividadCompleta = async (req, res) => {
                     
                     ${observacion ? `
                     <div style="margin-top: 20px;">
-                      <span style="display: inline-block; background-color: #210d65; color: white; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 12px;">📝 SEGUIMIENTO FINAL</span>
+                      
                       <div style="background: linear-gradient(135deg, #f8f9ff, #ffffff); border: 2px solid #e8e3ff; border-radius: 12px; padding: 20px; margin-top: 10px; position: relative; box-shadow: 0 2px 8px rgba(33, 13, 101, 0.1);">
                         <!-- Decorative icon -->
                         <div style="position: absolute; top: -8px; left: 20px; background-color: #210d65; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">📝</div>
                         <div style="margin-top: 15px;">
-                          <h4 style="color: #210d65; margin: 0 0 12px 0; font-size: 16px; font-weight: bold;">Comentarios y Observaciones:</h4>
-                          <div style="background-color: white; padding: 18px; border-radius: 8px; border-left: 4px solid #210d65; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
+                            <div style="background-color: white; padding: 18px; border-radius: 8px; border-left: 4px solid #210d65; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
                             <p style="margin: 0; font-size: 15px; color: #333; line-height: 1.7; white-space: pre-wrap; word-wrap: break-word;">${observacion}</p>
                           </div>
                           <div style="margin-top: 12px; text-align: right;">
