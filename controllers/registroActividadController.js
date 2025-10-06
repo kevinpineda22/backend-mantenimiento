@@ -134,17 +134,17 @@ export const registrarTareaAsignada = async (req, res) => {
             
             <!-- Action Button -->
             <div style="text-align: center; margin: 30px 0;">
-              <div style="background: linear-gradient(135deg, #210d65, #3d1a9e); color: white; padding: 15px 30px; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px;">⚡ Revisar en el Sistema</div>
+              <a href="https://merkahorro.com/login" target="_blank" style="background: linear-gradient(135deg, #210d65, #3d1a9e); color: white; padding: 15px 30px; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px; text-decoration: none; box-shadow: 0 4px 12px rgba(33, 13, 101, 0.3); transition: all 0.3s ease;">⚡ Revisar en el Sistema</a>
             </div>
             
-            <!-- Instructions -->
+               <!-- Instructions -->
             <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin: 20px 0;">
-              <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.6;">
-                <strong>📋 Instrucciones:</strong><br>
-                • Accede al sistema de mantenimiento<br>
-                • Registra la "Foto Antes" antes de iniciar<br>
-                • Ejecuta la tarea asignada<br>
-                • Sube la "Foto Después" al finalizar
+              <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.8;">
+                <strong>📋 Instrucciones paso a paso:</strong><br><br>
+                🔑 <strong>1.</strong> Haz clic en "Revisar en el Sistema" para acceder<br>
+                🔍 <strong>2.</strong> Revisa todos los detalles de la tarea<br>
+                🔧 <strong>3.</strong> Ejecuta la actividad de mantenimiento<br>
+                📸 <strong>4.</strong> Sube la "Foto Después" al completar<br>
               </p>
             </div>
           </div>
@@ -308,25 +308,43 @@ export const actualizarActividadCompleta = async (req, res) => {
                     </div>
                     
                     ${observacion ? `
-                    <div>
-                      <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📝 SEGUIMIENTO FINAL</span>
-                      <p style="margin: 5px 0; font-size: 16px; color: #333; line-height: 1.5; background-color: #f8f9ff; padding: 15px; border-radius: 8px; border-left: 3px solid #210d65;">${observacion}</p>
+                    <div style="margin-top: 20px;">
+                      <span style="display: inline-block; background-color: #210d65; color: white; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 12px;">📝 SEGUIMIENTO FINAL</span>
+                      <div style="background: linear-gradient(135deg, #f8f9ff, #ffffff); border: 2px solid #e8e3ff; border-radius: 12px; padding: 20px; margin-top: 10px; position: relative; box-shadow: 0 2px 8px rgba(33, 13, 101, 0.1);">
+                        <!-- Decorative icon -->
+                        <div style="position: absolute; top: -8px; left: 20px; background-color: #210d65; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">📝</div>
+                        <div style="margin-top: 15px;">
+                          <h4 style="color: #210d65; margin: 0 0 12px 0; font-size: 16px; font-weight: bold;">Comentarios y Observaciones:</h4>
+                          <div style="background-color: white; padding: 18px; border-radius: 8px; border-left: 4px solid #210d65; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
+                            <p style="margin: 0; font-size: 15px; color: #333; line-height: 1.7; white-space: pre-wrap; word-wrap: break-word;">${observacion}</p>
+                          </div>
+                          <div style="margin-top: 12px; text-align: right;">
+                            <small style="color: #666; font-style: italic; font-size: 12px;">Registrado por: ${registroExistente.responsable}</small>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     ` : ''}
                   </div>
                 </div>
                 
                 <!-- Action Section -->
-                <div style="background-color: #e8f5e8; border: 1px solid #c3e6c3; border-radius: 8px; padding: 20px; margin: 25px 0; text-align: center;">
-                  <h3 style="color: #155724; margin: 0 0 10px 0; font-size: 16px;">📊 Próximos Pasos</h3>
-                  <p style="margin: 0; color: #155724; font-size: 14px; line-height: 1.6;">
-                    Revisa el historial del sistema para ver las fotos "Antes" y "Después", así como todos los detalles de la ejecución.
-                  </p>
+                <div style="background: linear-gradient(135deg, #e8f5e8, #f0fbf0); border: 2px solid #c3e6c3; border-radius: 12px; padding: 25px; margin: 25px 0; text-align: center; position: relative;">
+                  <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background-color: #28a745; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">📊</div>
+                  <h3 style="color: #155724; margin: 20px 0 15px 0; font-size: 18px; font-weight: bold;">Próximos Pasos</h3>
+                  <div style="text-align: left; max-width: 400px; margin: 0 auto;">
+                    <p style="margin: 8px 0; color: #155724; font-size: 14px; line-height: 1.6;">
+                      ✓ <strong>Accede al sistema</strong> haciendo clic en "Ver en el Sistema"<br>
+                      ✓ <strong>Revisa las fotos</strong> "Antes" y "Después" de la tarea<br>
+                      ✓ <strong>Verifica los detalles</strong> de la ejecución completa<br>
+                      ✓ <strong>Valida el seguimiento</strong> y observaciones finales
+                    </p>
+                  </div>
                 </div>
                 
                 <!-- System Button -->
                 <div style="text-align: center; margin: 30px 0;">
-                  <div style="background: linear-gradient(135deg, #210d65, #3d1a9e); color: white; padding: 15px 30px; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px;">📋 Ver en el Sistema</div>
+                  <a href="https://merkahorro.com/login" target="_blank" style="background: linear-gradient(135deg, #210d65, #3d1a9e); color: white; padding: 15px 30px; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px; text-decoration: none; box-shadow: 0 4px 12px rgba(33, 13, 101, 0.3); transition: all 0.3s ease;">📋 Ver en el Sistema</a>
                 </div>
               </div>
               
