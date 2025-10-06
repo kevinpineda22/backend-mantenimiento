@@ -87,15 +87,77 @@ export const registrarTareaAsignada = async (req, res) => {
     if (insertError) throw insertError;
 
     // ⭐ ENVIAR NOTIFICACIÓN POR CORREO (Trigger de asignación)
-    const subject = `🔧 Tarea de Mantenimiento Asignada: ${sede}`;
+    const subject = `🔧 Nueva Tarea de Mantenimiento - ${sede}`;
     const htmlBody = `
-            <h2>¡Se te ha asignado una nueva tarea de mantenimiento!</h2>
-            <p><strong>Sede:</strong> ${sede}</p>
-            <p><strong>Hallazgo:</strong> ${actividad}</p>
-            <p><strong>Fecha Límite:</strong> ${fechaFinalStr || 'N/A'}</p>
-            <p><strong>Asignada por:</strong> ${creador_email}</p>
-            <p>Por favor, revisa el sistema para comenzar la ejecución.</p>
-        `; await sendEmail(responsable, subject, htmlBody); // Envía al Email del RESPONSABLE
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f4f4f4;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #210d65, #3d1a9e); padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">🔧 Nueva Tarea Asignada</h1>
+            <p style="color: #e8e3ff; margin: 10px 0 0 0; font-size: 16px;">Sistema de Mantenimiento</p>
+          </div>
+          
+          <!-- Content -->
+          <div style="padding: 30px;">
+            <div style="background-color: #f8f9ff; border-left: 4px solid #210d65; padding: 20px; margin-bottom: 20px;">
+              <h2 style="color: #210d65; margin: 0 0 15px 0; font-size: 20px;">¡Se te ha asignado una nueva tarea!</h2>
+              <p style="color: #666; margin: 0; line-height: 1.6;">Has recibido una nueva asignación de mantenimiento que requiere tu atención.</p>
+            </div>
+            
+            <!-- Details Card -->
+            <div style="background-color: #ffffff; border: 2px solid #e8e3ff; border-radius: 8px; padding: 25px; margin: 20px 0;">
+              <div style="margin-bottom: 15px;">
+                <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📍 UBICACIÓN</span>
+                <p style="margin: 5px 0; font-size: 18px; font-weight: bold; color: #333;">${sede}</p>
+              </div>
+              
+              <div style="margin-bottom: 15px;">
+                <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">🔧 HALLAZGO</span>
+                <p style="margin: 5px 0; font-size: 16px; color: #333; line-height: 1.5;">${actividad}</p>
+              </div>
+              
+              <div style="margin-bottom: 15px;">
+                <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📅 FECHA LÍMITE</span>
+                <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: ${fechaFinalStr ? '#e74c3c' : '#666'};">${fechaFinalStr || 'No especificada'}</p>
+              </div>
+              
+              <div style="margin-bottom: 0;">
+                <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">👤 ASIGNADO POR</span>
+                <p style="margin: 5px 0; font-size: 16px; color: #333;">${creador_email}</p>
+              </div>
+            </div>
+            
+            <!-- Action Button -->
+            <div style="text-align: center; margin: 30px 0;">
+              <div style="background: linear-gradient(135deg, #210d65, #3d1a9e); color: white; padding: 15px 30px; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px;">⚡ Revisar en el Sistema</div>
+            </div>
+            
+            <!-- Instructions -->
+            <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin: 20px 0;">
+              <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.6;">
+                <strong>📋 Instrucciones:</strong><br>
+                • Accede al sistema de mantenimiento<br>
+                • Registra la "Foto Antes" antes de iniciar<br>
+                • Ejecuta la tarea asignada<br>
+                • Sube la "Foto Después" al finalizar
+              </p>
+            </div>
+          </div>
+          
+          <!-- Footer -->
+          <div style="background-color: #f8f9ff; padding: 20px; text-align: center; border-top: 1px solid #e8e3ff;">
+            <p style="margin: 0; color: #666; font-size: 12px;">Sistema de Gestión de Mantenimiento</p>
+            <p style="margin: 5px 0 0 0; color: #210d65; font-size: 12px; font-weight: bold;">Responde a este correo para cualquier consulta</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `; await sendEmail(responsable, subject, htmlBody); // Envía al Email del RESPONSABLE
 
     return res.status(200).json({ message: "Tarea asignada y notificada exitosamente." });
   } catch (err) {
@@ -195,20 +257,87 @@ export const actualizarActividadCompleta = async (req, res) => {
         const subject = `${estadoTexto}: Tarea en ${registroExistente.sede}`;
         
         const htmlBody = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: ${nuevoEstado === 'completado' ? '#28a745' : '#dc3545'};">
-              ${estadoTexto}
-            </h2>
-            <p><strong>📍 Sede:</strong> ${registroExistente.sede}</p>
-            <p><strong>🔧 Hallazgo:</strong> ${registroExistente.actividad}</p>
-            <p><strong>👤 Ejecutada por:</strong> ${registroExistente.responsable}</p>
-            <p><strong>📅 Fecha de finalización:</strong> ${new Date().toLocaleDateString('es-ES')}</p>
-            ${observacion ? `<p><strong>📝 Seguimiento final:</strong> ${observacion}</p>` : ''}
-            <hr style="margin: 20px 0;">
-            <p style="color: #666;">
-              Revisa el historial del sistema para ver las fotos y detalles completos de la tarea.
-            </p>
-          </div>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f4f4f4;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+              <!-- Header -->
+              <div style="background: linear-gradient(135deg, #210d65, ${nuevoEstado === 'completado' ? '#28a745' : '#dc3545'}); padding: 30px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">${estadoTexto}</h1>
+                <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Tarea Finalizada</p>
+              </div>
+              
+              <!-- Status Badge -->
+              <div style="text-align: center; margin-top: -15px; position: relative; z-index: 1;">
+                <div style="display: inline-block; background-color: ${nuevoEstado === 'completado' ? '#28a745' : '#dc3545'}; color: white; padding: 10px 25px; border-radius: 25px; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                  ${nuevoEstado === 'completado' ? '✅ TAREA COMPLETADA' : '❌ TAREA NO COMPLETADA'}
+                </div>
+              </div>
+              
+              <!-- Content -->
+              <div style="padding: 30px;">
+                <div style="background-color: #f8f9ff; border-left: 4px solid #210d65; padding: 20px; margin-bottom: 25px;">
+                  <h2 style="color: #210d65; margin: 0 0 10px 0; font-size: 18px;">Resumen de la Tarea</h2>
+                  <p style="color: #666; margin: 0; line-height: 1.6;">La tarea que asignaste ha sido finalizada. Aquí tienes los detalles:</p>
+                </div>
+                
+                <!-- Task Details -->
+                <div style="background-color: #ffffff; border: 2px solid #e8e3ff; border-radius: 8px; padding: 25px; margin: 20px 0;">
+                  <div style="display: grid; gap: 15px;">
+                    <div>
+                      <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📍 SEDE</span>
+                      <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: #333;">${registroExistente.sede}</p>
+                    </div>
+                    
+                    <div>
+                      <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">🔧 HALLAZGO</span>
+                      <p style="margin: 5px 0; font-size: 16px; color: #333; line-height: 1.5;">${registroExistente.actividad}</p>
+                    </div>
+                    
+                    <div>
+                      <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">👤 EJECUTADO POR</span>
+                      <p style="margin: 5px 0; font-size: 16px; color: #333;">${registroExistente.responsable}</p>
+                    </div>
+                    
+                    <div>
+                      <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📅 FINALIZADO EL</span>
+                      <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: #333;">${new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    </div>
+                    
+                    ${observacion ? `
+                    <div>
+                      <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📝 SEGUIMIENTO FINAL</span>
+                      <p style="margin: 5px 0; font-size: 16px; color: #333; line-height: 1.5; background-color: #f8f9ff; padding: 15px; border-radius: 8px; border-left: 3px solid #210d65;">${observacion}</p>
+                    </div>
+                    ` : ''}
+                  </div>
+                </div>
+                
+                <!-- Action Section -->
+                <div style="background-color: #e8f5e8; border: 1px solid #c3e6c3; border-radius: 8px; padding: 20px; margin: 25px 0; text-align: center;">
+                  <h3 style="color: #155724; margin: 0 0 10px 0; font-size: 16px;">📊 Próximos Pasos</h3>
+                  <p style="margin: 0; color: #155724; font-size: 14px; line-height: 1.6;">
+                    Revisa el historial del sistema para ver las fotos "Antes" y "Después", así como todos los detalles de la ejecución.
+                  </p>
+                </div>
+                
+                <!-- System Button -->
+                <div style="text-align: center; margin: 30px 0;">
+                  <div style="background: linear-gradient(135deg, #210d65, #3d1a9e); color: white; padding: 15px 30px; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px;">📋 Ver en el Sistema</div>
+                </div>
+              </div>
+              
+              <!-- Footer -->
+              <div style="background-color: #f8f9ff; padding: 20px; text-align: center; border-top: 1px solid #e8e3ff;">
+                <p style="margin: 0; color: #666; font-size: 12px;">Sistema de Gestión de Mantenimiento</p>
+                <p style="margin: 5px 0 0 0; color: #210d65; font-size: 12px; font-weight: bold;">Gracias por usar nuestro sistema</p>
+              </div>
+            </div>
+          </body>
+          </html>
         `;
         
         await sendEmail(registroExistente.creador_email, subject, htmlBody);
