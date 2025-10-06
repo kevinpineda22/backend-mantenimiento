@@ -36,20 +36,18 @@ const subirImagen = async (file, carpeta) => {
 // ESTA FUNCIÓN DEBE SER LLAMADA POR EL FORMULARIO AsignarTarea.jsx
 // ==========================================================
 export const registrarTareaAsignada = async (req, res) => {
-  // Nota: Cuando se usa Multer, todos los campos no-archivo llegan en req.body.
   const {
     sede,
     actividad,
     fechaInicio,
-    fechaFinal, // Usado como Fecha Límite
+    fechaFinal,
     precio,
     estado,
-    responsable, // Correo del asignado
+    responsable, // ⭐ Este puede contener múltiples emails separados por ";"
     observacion,
-    creador_email, // Correo del asignador
+    creador_email,
   } = req.body;
 
-  // Archivos subidos por el Líder/SST
   const fotoAntes = req.files?.fotoAntes?.[0];
   const fotoDespues = req.files?.fotoDespues?.[0];
 
@@ -58,104 +56,102 @@ export const registrarTareaAsignada = async (req, res) => {
   }
 
   try {
-    // ⭐ Convertir fechas de array a string si es necesario
     const fechaInicioStr = Array.isArray(fechaInicio) ? fechaInicio[0] : fechaInicio;
     const fechaFinalStr = Array.isArray(fechaFinal) ? fechaFinal[0] : fechaFinal;
 
-    // Subida de archivos (si el Líder/SST adjuntó algo)
     const urlAntes = fotoAntes ? await subirImagen(fotoAntes, "antes") : null;
     const urlDespues = fotoDespues ? await subirImagen(fotoDespues, "despues") : null;
 
-    // Inserción en la BD
+    // ⭐ NUEVA LÓGICA: Manejo de múltiples responsables
+    const responsables = responsable.includes(';') 
+      ? responsable.split(';').map(email => email.trim()) 
+      : [responsable];
+
+    console.log(`📧 Responsables procesados:`, responsables);
+    console.log(`📧 ¿Es tarea grupal?:`, responsables.length > 1);
+
+    // Insertar en BD con el primer responsable como principal
+    const responsablePrincipal = responsables[0];
+    const responsablesGrupo = responsables.length > 1 ? responsable : null; // String completo con ';'
+
+    console.log(`📧 Responsable principal:`, responsablePrincipal);
+    console.log(`📧 Campo responsables_grupo:`, responsablesGrupo);
+
     const { error: insertError } = await supabase
       .from("registro_mantenimiento")
       .insert([{
         sede,
         actividad,
-        fecha_inicio: fechaInicioStr, // ⭐ Usar fecha corregida
-        fecha_final: fechaFinalStr, // ⭐ Usar fecha corregida
+        fecha_inicio: fechaInicioStr,
+        fecha_final: fechaFinalStr,
         precio: precio ? parseFloat(precio) : null,
         observacion,
         estado,
-        responsable,
-        // Nota: El campo 'designado' se deja NULL ya que no es usado por el asignador.
+        responsable: responsablePrincipal,
+        responsables_grupo: responsablesGrupo, // ⭐ CAMPO CLAVE PARA TAREAS GRUPALES
         creador_email: creador_email,
         foto_antes_url: urlAntes,
         foto_despues_url: urlDespues,
       }]);
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      console.error("❌ Error al insertar:", insertError);
+      throw insertError;
+    }
 
-    // ⭐ ENVIAR NOTIFICACIÓN POR CORREO (Trigger de asignación)
-    const subject = `🔧 Nueva Tarea de Mantenimiento - ${sede}`;
-   const htmlBody = `
-  <html>
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nueva Tarea de Mantenimiento</title>
-  </head>
-  <body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f4f4f4;">
-    <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-      
-      <div style="background-color: #210d65; padding: 25px; text-align: center;">
-        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">🛠️ Nueva Tarea Asignada</h1>
-        <p style="color: #f0f0f0; margin: 8px 0 0 0; font-size: 14px;">Sistema de Mantenimiento</p>
-      </div>
-      
-      <div style="padding: 30px;">
-        <div style="border-left: 4px solid #210d65; padding: 15px; margin-bottom: 25px; background-color: #f8f8f8;">
-          <h2 style="color: #333333; margin: 0 0 10px 0; font-size: 18px;">¡Tienes una nueva asignación!</h2>
-          <p style="color: #666; margin: 0; line-height: 1.6;">Por favor, revisa los detalles a continuación y gestiona la tarea a la brevedad.</p>
-        </div>
-        
-        <div style="background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 20px; margin: 20px 0;">
-          
-          <div style="padding: 10px 0; border-bottom: 1px dashed #eeeeee;">
-            <span style="display: block; color: #888; font-size: 12px; font-weight: bold; margin-bottom: 4px;">📍 SEDE</span>
-            <p style="margin: 0; font-size: 16px; font-weight: bold; color: #333;">${sede}</p>
-          </div>
-          
-          <div style="padding: 10px 0; border-bottom: 1px dashed #eeeeee;">
-            <span style="display: block; color: #888; font-size: 12px; font-weight: bold; margin-bottom: 4px;">📝 ACTIVIDAD / HALLAZGO</span>
-            <p style="margin: 0; font-size: 15px; color: #333; line-height: 1.5;">${actividad}</p>
-          </div>
-          
-          <div style="padding: 10px 0; border-bottom: 1px dashed #eeeeee;">
-            <span style="display: block; color: #888; font-size: 12px; font-weight: bold; margin-bottom: 4px;">📅 FECHA LÍMITE</span>
-            <p style="margin: 0; font-size: 15px; font-weight: bold; color: ${fechaFinalStr ? '#d35400' : '#666'};">${fechaFinalStr || 'No especificada'}</p>
-          </div>
-          
-          <div style="padding: 10px 0;">
-            <span style="display: block; color: #888; font-size: 12px; font-weight: bold; margin-bottom: 4px;">👤 ASIGNADO POR</span>
-            <p style="margin: 0; font-size: 15px; color: #333;">${creador_email}</p>
-          </div>
+    console.log(`✅ Tarea guardada exitosamente ${responsables.length > 1 ? 'como GRUPAL' : 'como INDIVIDUAL'}`);
 
-        </div>
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="https://merkahorro.com/login" target="_blank" style="background-color: #210d65; color: white; padding: 12px 25px; border-radius: 4px; display: inline-block; font-weight: bold; font-size: 15px; text-decoration: none; box-shadow: 0 4px 10px rgba(33, 13, 101, 0.2); transition: background-color 0.3s ease;">
-            👉 Acceder y Revisar Tarea
-          </a>
-        </div>
-        
-        <div style="background-color: #fffde7; border: 1px solid #ffe082; border-radius: 6px; padding: 15px; margin: 20px 0;">
-          <p style="margin: 0; color: #795548; font-size: 14px; line-height: 1.8;">
-            <strong>ℹ️ Recordatorio:</strong><br>
-            Al finalizar, no olvides **actualizar el estado** a "Completado" y **subir la Foto Después** en el sistema.
+    // ⭐ ENVIAR NOTIFICACIÓN A TODOS LOS RESPONSABLES
+    const subject = `🔧 Tarea de Mantenimiento Asignada: ${sede}`;
+    
+    const htmlBodyBase = `
+      <h2>¡Se ha asignado una nueva tarea de mantenimiento!</h2>
+      <p><strong>Sede:</strong> ${sede}</p>
+      <p><strong>Actividad:</strong> ${actividad}</p>
+      <p><strong>Fecha Límite:</strong> ${fechaFinalStr || 'N/A'}</p>
+      <p><strong>Observaciones:</strong> ${observacion || 'Ninguna'}</p>
+      <p><strong>Asignada por:</strong> ${creador_email}</p>
+    `;
+
+    // ⭐ LÓGICA DE NOTIFICACIÓN MÚLTIPLE
+    if (responsables.length > 1) {
+      const htmlBodyGrupo = htmlBodyBase + `
+        <div style="background-color: #E3F2FD; padding: 15px; border-radius: 8px; margin: 15px 0;">
+          <h3 style="color: #1976D2; margin-top: 0;">📧 Tarea asignada a todo el equipo:</h3>
+          <ul style="margin: 10px 0;">
+            ${responsables.map(email => `<li>${email}</li>`).join('')}
+          </ul>
+          <p style="margin-bottom: 0; font-style: italic; color: #666;">
+            💡 <strong>Cualquier miembro del equipo puede ejecutar esta tarea.</strong><br>
+            🤝 Por favor, coordinen entre ustedes para evitar duplicación de esfuerzos.
           </p>
         </div>
-      </div>
-      
-      <div style="background-color: #f4f4f4; padding: 15px; text-align: center; border-top: 1px solid #e0e0e0;">
-        <p style="margin: 0; color: #888; font-size: 11px;">Este es un mensaje automático. Por favor, no responder directamente.</p>
-      </div>
-    </div>
-  </body>
-  </html>`;
-  await sendEmail(responsable, subject, htmlBody); // Envía al Email del RESPONSABLE
+        <p>Revisa el sistema para comenzar la ejecución y actualizar el estado.</p>
+      `;
 
-    return res.status(200).json({ message: "Tarea asignada y notificada exitosamente." });
+      // Enviar a todos los responsables
+      const emailPromises = responsables.map(email => 
+        sendEmail(email, subject, htmlBodyGrupo)
+      );
+      
+      await Promise.all(emailPromises);
+      
+      console.log(`📧 Notificación enviada a ${responsables.length} responsables: ${responsables.join(', ')}`);
+    } else {
+      // Envío normal para un solo responsable
+      const htmlBodyIndividual = htmlBodyBase + `
+        <p>Por favor, revisa el sistema para comenzar la ejecución.</p>
+      `;
+      
+      await sendEmail(responsablePrincipal, subject, htmlBodyIndividual);
+      console.log(`📧 Notificación enviada a: ${responsablePrincipal}`);
+    }
+
+    return res.status(200).json({ 
+      message: responsables.length > 1 
+        ? `Tarea asignada y notificada a ${responsables.length} responsables exitosamente.`
+        : "Tarea asignada y notificada exitosamente."
+    });
   } catch (err) {
     console.error("Error en registrarTareaAsignada:", err);
     return res.status(500).json({ error: err.message || "Error interno del servidor al asignar la tarea" });
@@ -486,13 +482,29 @@ export const obtenerHistorialPorResponsable = async (req, res) => {
   }
 
   try {
+    console.log(`🔍 Buscando tareas para: ${responsableEmail}`);
+
+    // ⭐ BÚSQUEDA MEJORADA: Buscar tanto en responsable como en responsables_grupo
     const { data, error } = await supabase
       .from("registro_mantenimiento")
       .select("*")
-      .eq("responsable", responsableEmail)
+      .or(`responsable.eq.${responsableEmail},responsables_grupo.like.%${responsableEmail}%`)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
+
+    console.log(`📋 Tareas encontradas para ${responsableEmail}:`, data.length);
+    
+    // ⭐ LOG PARA DEBUG: Mostrar qué tareas son grupales
+    const tareasGrupales = data.filter(tarea => tarea.responsables_grupo);
+    console.log(`👥 Tareas grupales encontradas:`, tareasGrupales.length);
+    
+    if (tareasGrupales.length > 0) {
+      tareasGrupales.forEach(tarea => {
+        console.log(`   - ID ${tarea.id}: ${tarea.sede} - responsables_grupo: "${tarea.responsables_grupo}"`);
+      });
+    }
+
     res.status(200).json(data);
   } catch (err) {
     console.error("Error en obtenerHistorialPorResponsable:", err);
