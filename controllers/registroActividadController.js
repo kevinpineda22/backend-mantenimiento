@@ -192,10 +192,8 @@ export const registrarTareaAsignada = async (req, res) => {
                 <strong>📋 Pasos a seguir:</strong><br><br>
                 🔑 <strong>1.</strong> Accede al sistema haciendo clic en el botón<br>
                 🔍 <strong>2.</strong> Revisa todos los detalles de la asignación<br>
-                📷 <strong>3.</strong> Toma la "Foto Antes" de iniciar la tarea<br>
-                🔧 <strong>4.</strong> Ejecuta la actividad de mantenimiento<br>
-                📸 <strong>5.</strong> Sube la "Foto Después" al completar<br>
-                ✅ <strong>6.</strong> Actualiza el estado a "Finalizado"
+                🔧 <strong>3.</strong> Ejecuta la actividad de mantenimiento<br>
+                📸 <strong>4.</strong> Sube la "Foto Después" al completar y cambia el estado a Completado<br>
               </p>
             </div>
           </div>
