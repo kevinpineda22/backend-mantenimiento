@@ -115,14 +115,14 @@ export const registrarTareaAsignada = async (req, res) => {
         <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #210d65, #3d1a9e); padding: 30px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">🔧 Nueva Tarea ${isGroupTask ? 'Grupal ' : ''}Asignada</h1>
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">🔧 Nueva Tarea ${isGroupTask ? ' ' : ''}Asignada</h1>
             <p style="color: #e8e3ff; margin: 10px 0 0 0; font-size: 16px;">Sistema de Mantenimiento</p>
           </div>
           
           <!-- Content -->
           <div style="padding: 30px;">
             <div style="background-color: #f8f9ff; border-left: 4px solid #210d65; padding: 20px; margin-bottom: 20px;">
-              <h2 style="color: #210d65; margin: 0 0 15px 0; font-size: 20px;">¡Se te ha asignado una nueva tarea${isGroupTask ? ' en equipo' : ''}!</h2>
+              <h2 style="color: #210d65; margin: 0 0 15px 0; font-size: 20px;">¡Se te ha asignado una nueva tarea${isGroupTask ? '' : ''}!</h2>
               <p style="color: #666; margin: 0; line-height: 1.6;">Has recibido una nueva asignación de mantenimiento que requiere tu atención${isGroupTask ? ' junto con tu equipo de trabajo' : ''}.</p>
             </div>
             
@@ -175,7 +175,6 @@ export const registrarTareaAsignada = async (req, res) => {
                     <strong>🤝 Coordinación del equipo:</strong><br>
                     • Cualquier miembro puede ejecutar esta tarea<br>
                     • Coordinen entre ustedes para evitar duplicación<br>
-                    • El primero que inicie debe notificar al grupo
                   </p>
                 </div>
               </div>
