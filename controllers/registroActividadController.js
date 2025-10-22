@@ -57,6 +57,7 @@ export const registrarTareaAsignada = async (req, res) => {
     observacion,
     creador_email,
     enviarCorreo, // ⭐ NUEVO: Recibir valor de la casilla
+    designado, // ⭐ NUEVO: Campo designado opcional
   } = req.body;
 
   const fotoAntes = req.files?.fotoAntes?.[0];
@@ -95,7 +96,7 @@ export const registrarTareaAsignada = async (req, res) => {
         actividad,
         fecha_inicio: fechaInicioStr,
         fecha_final: fechaFinalStr,
-        precio: precio ? parseFloat(precio) : null,
+        precio: precio ? parseFloat(precio) : null, // ⭐ PRECIO ES OPCIONAL
         observacion,
         estado,
         responsable: responsablePrincipal,
@@ -103,6 +104,7 @@ export const registrarTareaAsignada = async (req, res) => {
         creador_email: creador_email,
         foto_antes_url: urlAntes,
         foto_despues_url: urlDespues,
+        designado: designado || null, // ⭐ DESIGNADO ES OPCIONAL
       }]);
 
     if (insertError) {
