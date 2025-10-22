@@ -58,6 +58,9 @@ export const registrarTareaAsignada = async (req, res) => {
     creador_email,
     enviarCorreo, // ⭐ NUEVO: Recibir valor de la casilla
     designado, // ⭐ NUEVO: Campo designado opcional
+	nombre_empleado,
+    cedula_empleado,
+    cargo_empleado,
   } = req.body;
 
   const fotoAntes = req.files?.fotoAntes?.[0];
@@ -105,6 +108,9 @@ export const registrarTareaAsignada = async (req, res) => {
         foto_antes_url: urlAntes,
         foto_despues_url: urlDespues,
         designado: designado || null, // ⭐ DESIGNADO ES OPCIONAL
+		nombre_empleado: nombre_empleado || null,
+        cedula_empleado: cedula_empleado || null,
+        cargo_empleado: cargo_empleado || null,
       }]);
 
     if (insertError) {
@@ -255,6 +261,7 @@ export const registrarTareaAsignada = async (req, res) => {
     return res.status(500).json({ error: err.message || "Error interno del servidor al asignar la tarea" });
   }
 };
+
 
 
 
