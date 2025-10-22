@@ -7,9 +7,15 @@ import { sendEmail } from "../emailService.js"; // ⭐ IMPORTAR SERVICIO EXISTEN
 // Función auxiliar para subir y optimizar imágenes
 const subirImagen = async (file, carpeta) => {
   if (!file) return null;
-  const nombreLimpio = file.originalname.replace(/\s/g, "_");
-  const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
+  // ⭐ SANITIZAR NOMBRE DEL ARCHIVO (CORRECCIÓN)
+  let nombreLimpio = file.originalname
+    .replace(/\s/g, "_") // Reemplazar espacios con guiones bajos
+    .replace(/[^a-zA-Z0-9_.-]/g, "") // Eliminar caracteres especiales
+	.normalize("NFD") // Descomponer caracteres acentuados
+    .replace(/[\u0300-\u036f]/g, ""); // Eliminar diacríticos
 
+  const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
+  
   try {
     // Subir el archivo directamente con su tipo original
     const { error } = await supabase.storage
