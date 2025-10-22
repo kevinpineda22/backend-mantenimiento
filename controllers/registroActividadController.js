@@ -56,9 +56,7 @@ export const registrarTareaAsignada = async (req, res) => {
     responsable, // ⭐ Este puede contener múltiples emails separados por ";"
     observacion,
     creador_email,
-    nombre_empleado,  // ⭐ NUEVO: Captura el nombre del empleado
-    cedula_empleado,  // ⭐ NUEVO: Captura la cédula
-    cargo_empleado,   // ⭐ NUEVO: Captura el cargo
+    enviarCorreo, // ⭐ NUEVO: Recibir valor de la casilla
   } = req.body;
 
   const fotoAntes = req.files?.fotoAntes?.[0];
@@ -66,12 +64,6 @@ export const registrarTareaAsignada = async (req, res) => {
 
   if (!sede || !actividad || !fechaInicio || !estado || !responsable || !creador_email) {
     return res.status(400).json({ error: "Faltan campos obligatorios para la asignación." });
-  }
-
-  // ⭐ VALIDACIÓN OPCIONAL PARA DOTACIÓN: Si el responsable es de Suministros, verifica que los campos estén presentes
-  const esDotacion = responsable === "almacen@merkahorrosas.com"; // Ajusta según el email de Suministros
-  if (esDotacion && (!nombre_empleado || !cedula_empleado || !cargo_empleado)) {
-    return res.status(400).json({ error: "Para solicitudes de dotación, completa nombre, cédula y cargo del empleado." });
   }
 
   try {
@@ -111,9 +103,6 @@ export const registrarTareaAsignada = async (req, res) => {
         creador_email: creador_email,
         foto_antes_url: urlAntes,
         foto_despues_url: urlDespues,
-        nombre_empleado: nombre_empleado || null,  // ⭐ NUEVO: Insertar (null si vacío)
-        cedula_empleado: cedula_empleado || null,  // ⭐ NUEVO: Insertar (null si vacío)
-        cargo_empleado: cargo_empleado || null,    // ⭐ NUEVO: Insertar (null si vacío)
       }]);
 
     if (insertError) {
@@ -123,143 +112,135 @@ export const registrarTareaAsignada = async (req, res) => {
 
     console.log(`✅ Tarea guardada exitosamente ${responsables.length > 1 ? 'como GRUPAL' : 'como INDIVIDUAL'}`);
 
-    // ⭐ ENVIAR NOTIFICACIÓN A TODOS LOS RESPONSABLES
-    const esSolicitudDotacion = !!nombre_empleado; // Detecta si es dotación por presencia de campos
-    const subject = esSolicitudDotacion 
-      ? `👔 Nueva Solicitud de Dotación - ${sede}` 
-      : `🔧 Nueva Tarea de Mantenimiento - ${sede}`;
-    
-    // ⭐ PLANTILLA HTML PROFESIONAL BASE (Actualizada para incluir campos de dotación)
-    const createHtmlBody = (isGroupTask = false) => `
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      </head>
-      <body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f4f4f4;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-          <!-- Header -->
-          <div style="background: linear-gradient(135deg, #210d65, #3d1a9e); padding: 30px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">${esSolicitudDotacion ? '👔 Nueva Solicitud de Dotación' : '🔧 Nueva Tarea'} ${isGroupTask ? ' ' : ''}Asignada</h1>
-            <p style="color: #e8e3ff; margin: 10px 0 0 0; font-size: 16px;">Sistema de Mantenimiento</p>
-          </div>
-          
-          <!-- Content -->
-          <div style="padding: 30px;">
-            <div style="background-color: #f8f9ff; border-left: 4px solid #210d65; padding: 20px; margin-bottom: 20px;">
-              <h2 style="color: #210d65; margin: 0 0 15px 0; font-size: 20px;">¡Se te ha asignado una nueva ${esSolicitudDotacion ? 'solicitud' : 'tarea'}${isGroupTask ? '' : ''}!</h2>
-              <p style="color: #666; margin: 0; line-height: 1.6;">Has recibido una nueva asignación de mantenimiento que requiere tu atención${isGroupTask ? ' junto con tu equipo de trabajo' : ''}.</p>
+    // ⭐ LÓGICA DE NOTIFICACIÓN MÚLTIPLE (CONDICIONAL)
+    if (enviarCorreo === 'true') { // ⭐ VERIFICAR EL VALOR DE LA CASILLA
+      const subject = `🔧 Nueva Tarea de Mantenimiento - ${sede}`;
+      
+      // ⭐ PLANTILLA HTML PROFESIONAL BASE
+      const createHtmlBody = (isGroupTask = false) => `
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f4f4f4;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #210d65, #3d1a9e); padding: 30px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">🔧 Nueva Tarea ${isGroupTask ? ' ' : ''}Asignada</h1>
+              <p style="color: #e8e3ff; margin: 10px 0 0 0; font-size: 16px;">Sistema de Mantenimiento</p>
             </div>
             
-            <!-- Details Card -->
-            <div style="background-color: #ffffff; border: 2px solid #e8e3ff; border-radius: 8px; padding: 25px; margin: 20px 0;">
-              <div style="margin-bottom: 15px;">
-                <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📍 UBICACIÓN</span>
-                <p style="margin: 5px 0; font-size: 18px; font-weight: bold; color: #333;">${sede}</p>
+            <!-- Content -->
+            <div style="padding: 30px;">
+              <div style="background-color: #f8f9ff; border-left: 4px solid #210d65; padding: 20px; margin-bottom: 20px;">
+                <h2 style="color: #210d65; margin: 0 0 15px 0; font-size: 20px;">¡Se te ha asignado una nueva tarea${isGroupTask ? '' : ''}!</h2>
+                <p style="color: #666; margin: 0; line-height: 1.6;">Has recibido una nueva asignación de mantenimiento que requiere tu atención${isGroupTask ? ' junto con tu equipo de trabajo' : ''}.</p>
               </div>
               
-              <div style="margin-bottom: 15px;">
-                <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">🔧 ACTIVIDAD</span>
-                <p style="margin: 5px 0; font-size: 16px; color: #333; line-height: 1.5;">${actividad}</p>
+              <!-- Details Card -->
+              <div style="background-color: #ffffff; border: 2px solid #e8e3ff; border-radius: 8px; padding: 25px; margin: 20px 0;">
+                <div style="margin-bottom: 15px;">
+                  <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📍 UBICACIÓN</span>
+                  <p style="margin: 5px 0; font-size: 18px; font-weight: bold; color: #333;">${sede}</p>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                  <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">🔧 ACTIVIDAD</span>
+                  <p style="margin: 5px 0; font-size: 16px; color: #333; line-height: 1.5;">${actividad}</p>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                  <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📅 FECHA LÍMITE</span>
+                  <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: ${fechaFinalStr ? '#e74c3c' : '#666'};">${fechaFinalStr || 'No especificada'}</p>
+                </div>
+                
+                ${observacion ? `
+                <div style="margin-bottom: 15px;">
+                  <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📝 OBSERVACIONES</span>
+                  <div style="background-color: #f8f9ff; padding: 15px; border-radius: 8px; border-left: 3px solid #210d65; margin-top: 8px;">
+                    <p style="margin: 0; font-size: 15px; color: #333; line-height: 1.6; white-space: pre-wrap;">${observacion}</p>
+                  </div>
+                </div>
+                ` : ''}
+                
+                <div style="margin-bottom: 0;">
+                  <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">👤 ASIGNADO POR</span>
+                  <p style="margin: 5px 0; font-size: 16px; color: #333;">${creador_email}</p>
+                </div>
               </div>
               
-              <div style="margin-bottom: 15px;">
-                <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📅 FECHA LÍMITE</span>
-                <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: ${fechaFinalStr ? '#e74c3c' : '#666'};">${fechaFinalStr || 'No especificada'}</p>
-              </div>
-              
-              ${esSolicitudDotacion ? `
-              <div style="margin-bottom: 15px; background-color: #fff8e1; padding: 15px; border-radius: 8px; border: 1px solid #ffb74d;">
-                <span style="display: inline-block; background-color: #e65100; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">👔 INFORMACIÓN DEL EMPLEADO</span>
-                <p style="margin: 5px 0; font-size: 16px; color: #333;">Nombre: ${nombre_empleado}</p>
-                <p style="margin: 5px 0; font-size: 16px; color: #333;">Cédula: ${cedula_empleado}</p>
-                <p style="margin: 5px 0; font-size: 16px; color: #333;">Cargo: ${cargo_empleado}</p>
-              </div>
-              ` : ''}
-              
-              ${observacion ? `
-              <div style="margin-bottom: 15px;">
-                <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📝 OBSERVACIONES</span>
-                <div style="background-color: #f8f9ff; padding: 15px; border-radius: 8px; border-left: 3px solid #210d65; margin-top: 8px;">
-                  <p style="margin: 0; font-size: 15px; color: #333; line-height: 1.6; white-space: pre-wrap;">${observacion}</p>
+              ${isGroupTask ? `
+              <!-- Team Assignment Card -->
+              <div style="background: linear-gradient(135deg, #e3f2fd, #f3e5f5); border: 2px solid #81c784; border-radius: 12px; padding: 25px; margin: 25px 0; position: relative;">
+                <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background-color: #4caf50; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">👥</div>
+                <h3 style="color: #2e7d32; margin: 20px 0 15px 0; font-size: 18px; font-weight: bold; text-align: center;">Tarea Asignada al Equipo</h3>
+                <div style="background-color: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                  <p style="margin: 0 0 15px 0; color: #2e7d32; font-size: 14px; font-weight: bold;">👥 Miembros del equipo:</p>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
+                    ${responsables.map(email => `
+                      <span style="background-color: #e8f5e8; color: #2e7d32; padding: 6px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; border: 1px solid #81c784;">${email}</span>
+                    `).join('')}
+                  </div>
+                  <div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 15px; border-radius: 8px;">
+                    <p style="margin: 0; color: #ef6c00; font-size: 13px; line-height: 1.6;">
+                      <strong>🤝 Coordinación del equipo:</strong><br>
+                      • Cualquier miembro puede ejecutar esta tarea<br>
+                      • Coordinen entre ustedes para evitar duplicación<br>
+                    </p>
+                  </div>
                 </div>
               </div>
               ` : ''}
               
-              <div style="margin-bottom: 0;">
-                <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">👤 ASIGNADO POR</span>
-                <p style="margin: 5px 0; font-size: 16px; color: #333;">${creador_email}</p>
+              <!-- Action Button -->
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="https://merkahorro.com/login" target="_blank" style="background: linear-gradient(135deg, #210d65, #3d1a9e); color: white; padding: 15px 30px; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px; text-decoration: none; box-shadow: 0 4px 12px rgba(33, 13, 101, 0.3); transition: all 0.3s ease;">⚡ Acceder al Sistema</a>
+              </div>
+              
+              <!-- Instructions -->
+              <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.8;">
+                  <strong>📋 Pasos a seguir:</strong><br><br>
+                  🔑 <strong>1.</strong> Accede al sistema haciendo clic en el botón<br>
+                  🔍 <strong>2.</strong> Revisa todos los detalles de la asignación<br>
+                  🔧 <strong>3.</strong> Ejecuta la actividad de mantenimiento<br>
+                  📸 <strong>4.</strong> Sube la "Foto Después" al completar y cambia el estado a Completado<br>
+                </p>
               </div>
             </div>
             
-            ${isGroupTask ? `
-            <!-- Team Assignment Card -->
-            <div style="background: linear-gradient(135deg, #e3f2fd, #f3e5f5); border: 2px solid #81c784; border-radius: 12px; padding: 25px; margin: 25px 0; position: relative;">
-              <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background-color: #4caf50; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">👥</div>
-              <h3 style="color: #2e7d32; margin: 20px 0 15px 0; font-size: 18px; font-weight: bold; text-align: center;">Tarea Asignada al Equipo</h3>
-              <div style="background-color: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <p style="margin: 0 0 15px 0; color: #2e7d32; font-size: 14px; font-weight: bold;">👥 Miembros del equipo:</p>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
-                  ${responsables.map(email => `
-                    <span style="background-color: #e8f5e8; color: #2e7d32; padding: 6px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; border: 1px solid #81c784;">${email}</span>
-                  `).join('')}
-                </div>
-                <div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 15px; border-radius: 8px;">
-                  <p style="margin: 0; color: #ef6c00; font-size: 13px; line-height: 1.6;">
-                    <strong>🤝 Coordinación del equipo:</strong><br>
-                    • Cualquier miembro puede ejecutar esta tarea<br>
-                    • Coordinen entre ustedes para evitar duplicación<br>
-                  </p>
-                </div>
-              </div>
-            </div>
-            ` : ''}
-            
-            <!-- Action Button -->
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="https://merkahorro.com/login" target="_blank" style="background: linear-gradient(135deg, #210d65, #3d1a9e); color: white; padding: 15px 30px; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px; text-decoration: none; box-shadow: 0 4px 12px rgba(33, 13, 101, 0.3); transition: all 0.3s ease;">⚡ Acceder al Sistema</a>
-            </div>
-            
-            <!-- Instructions -->
-            <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin: 20px 0;">
-              <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.8;">
-                <strong>📋 Pasos a seguir:</strong><br><br>
-                🔑 <strong>1.</strong> Accede al sistema haciendo clic en el botón<br>
-                🔍 <strong>2.</strong> Revisa todos los detalles de la asignación<br>
-                🔧 <strong>3.</strong> Ejecuta la actividad de mantenimiento<br>
-                📸 <strong>4.</strong> Sube la "Foto Después" al completar y cambia el estado a Completado<br>
-              </p>
+            <!-- Footer -->
+            <div style="background-color: #f8f9ff; padding: 20px; text-align: center; border-top: 1px solid #e8e3ff;">
+              <p style="margin: 0; color: #666; font-size: 12px;">Sistema de Gestión de Mantenimiento</p>
+              <p style="margin: 5px 0 0 0; color: #210d65; font-size: 12px; font-weight: bold;">Responde a este correo para cualquier consulta</p>
             </div>
           </div>
-          
-          <!-- Footer -->
-          <div style="background-color: #f8f9ff; padding: 20px; text-align: center; border-top: 1px solid #e8e3ff;">
-            <p style="margin: 0; color: #666; font-size: 12px;">Sistema de Gestión de Mantenimiento</p>
-            <p style="margin: 5px 0 0 0; color: #210d65; font-size: 12px; font-weight: bold;">Responde a este correo para cualquier consulta</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
+        </body>
+        </html>
+      `;
 
-    // ⭐ LÓGICA DE NOTIFICACIÓN MÚLTIPLE
-    if (responsables.length > 1) {
-      // Email grupal con diseño especial
-      const htmlBodyGrupo = createHtmlBody(true);
-      
-      // Enviar a todos los responsables
-      const emailPromises = responsables.map(email => 
-        sendEmail(email, subject, htmlBodyGrupo)
-      );
-      
-      await Promise.all(emailPromises);
-      console.log(`📧 Notificación grupal enviada a ${responsables.length} responsables: ${responsables.join(', ')}`);
+      // ⭐ LÓGICA DE NOTIFICACIÓN MÚLTIPLE
+      if (responsables.length > 1) {
+        // Email grupal con diseño especial
+        const htmlBodyGrupo = createHtmlBody(true);
+        
+        // Enviar a todos los responsables
+        const emailPromises = responsables.map(email => 
+          sendEmail(email, subject, htmlBodyGrupo)
+        );
+        
+        await Promise.all(emailPromises);
+        console.log(`📧 Notificación grupal enviada a ${responsables.length} responsables: ${responsables.join(', ')}`);
+      } else {
+        // Envío individual con diseño estándar
+        const htmlBodyIndividual = createHtmlBody(false);
+        
+        await sendEmail(responsablePrincipal, subject, htmlBodyIndividual);
+        console.log(`📧 Notificación individual enviada a: ${responsablePrincipal}`);
+      }
     } else {
-      // Envío individual con diseño estándar
-      const htmlBodyIndividual = createHtmlBody(false);
-      
-      await sendEmail(responsablePrincipal, subject, htmlBodyIndividual);
-      console.log(`📧 Notificación individual enviada a: ${responsablePrincipal}`);
+      console.log('❌ Notificación de asignación de tarea suprimida por el usuario.');
     }
 
     return res.status(200).json({ 
@@ -272,6 +253,7 @@ export const registrarTareaAsignada = async (req, res) => {
     return res.status(500).json({ error: err.message || "Error interno del servidor al asignar la tarea" });
   }
 };
+
 
 
 export const obtenerHistorialCompleto = async (req, res) => {
