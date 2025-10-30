@@ -61,7 +61,7 @@ export const registrarTareaAsignada = async (req, res) => {
 	nombre_empleado,
     cedula_empleado,
     cargo_empleado,
-    nombre_solicitante, // ✅ NUEVO: Recibir nombre del solicitante
+    nombre_solicitante, // ✅ CAPTURAR nombre_solicitante del req.body
   } = req.body;
 
   const fotoAntes = req.files?.fotoAntes?.[0];
@@ -85,6 +85,7 @@ export const registrarTareaAsignada = async (req, res) => {
 
     console.log(`📧 Responsables procesados:`, responsables);
     console.log(`📧 ¿Es tarea grupal?:`, responsables.length > 1);
+    console.log(`👤 Nombre del solicitante recibido: "${nombre_solicitante}"`); // ✅ LOG para verificar
 
     // Insertar en BD con el primer responsable como principal
     const responsablePrincipal = responsables[0];
@@ -93,6 +94,7 @@ export const registrarTareaAsignada = async (req, res) => {
     console.log(`📧 Responsable principal:`, responsablePrincipal);
     console.log(`📧 Campo responsables_grupo:`, responsablesGrupo);
 
+    // ✅ INSERCIÓN CON nombre_solicitante
     const { error: insertError } = await supabase
       .from("registro_mantenimiento")
       .insert([{
@@ -112,7 +114,7 @@ export const registrarTareaAsignada = async (req, res) => {
 		nombre_empleado: nombre_empleado || null,
         cedula_empleado: cedula_empleado || null,
         cargo_empleado: cargo_empleado || null,
-        nombre_solicitante: nombre_solicitante || null, // ✅ NUEVO: Guardar nombre del solicitante
+        nombre_solicitante: nombre_solicitante || null, // ✅ INSERTAR nombre_solicitante
       }]);
 
     if (insertError) {
@@ -121,6 +123,7 @@ export const registrarTareaAsignada = async (req, res) => {
     }
 
     console.log(`✅ Tarea guardada exitosamente ${responsables.length > 1 ? 'como GRUPAL' : 'como INDIVIDUAL'}`);
+    console.log(`✅ Nombre del solicitante guardado: "${nombre_solicitante || 'N/A'}"`); // ✅ Confirmación
 
     // ⭐ LÓGICA DE NOTIFICACIÓN MÚLTIPLE (CONDICIONAL)
     if (enviarCorreo === 'true') { // ⭐ VERIFICAR EL VALOR DE LA CASILLA
