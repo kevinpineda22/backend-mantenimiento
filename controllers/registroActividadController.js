@@ -53,7 +53,7 @@ export const registrarTareaAsignada = async (req, res) => {
     fechaFinal,
     precio,
     estado,
-    responsable, // ⭐ Este puede contener múltiples emails separados por ";"
+    responsable,
     observacion,
     creador_email,
     enviarCorreo, // ⭐ NUEVO: Recibir valor de la casilla
@@ -61,6 +61,7 @@ export const registrarTareaAsignada = async (req, res) => {
 	nombre_empleado,
     cedula_empleado,
     cargo_empleado,
+    nombre_solicitante, // ✅ NUEVO: Recibir nombre del solicitante
   } = req.body;
 
   const fotoAntes = req.files?.fotoAntes?.[0];
@@ -111,6 +112,7 @@ export const registrarTareaAsignada = async (req, res) => {
 		nombre_empleado: nombre_empleado || null,
         cedula_empleado: cedula_empleado || null,
         cargo_empleado: cargo_empleado || null,
+        nombre_solicitante: nombre_solicitante || null, // ✅ NUEVO: Guardar nombre del solicitante
       }]);
 
     if (insertError) {
