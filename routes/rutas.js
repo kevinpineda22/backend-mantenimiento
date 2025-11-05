@@ -21,6 +21,7 @@ import {
   registrarTareaAsignada, // Función para asignación de tareas
   obtenerHistorialPorCreador,
   obtenerHistorialPorResponsable, // ⭐ NUEVA FUNCIÓN
+  redirigirTarea, // ⭐ FUNCIÓN PARA REDIRIGIR TAREAS
 } from "../controllers/registroActividadController.js";
 
 const router = express.Router();
@@ -58,6 +59,9 @@ router.put(
 
 router.delete("/actividades/full/:id", eliminarActividadCompleta);
 router.post("/actividades/full/:id/eliminar-imagen", eliminarImagenHistorial);
+
+// ⭐ NUEVA RUTA: Redirigir tarea a otro responsable
+router.post("/actividades/redirigir/:id", redirigirTarea);
 
 // =========================================
 // Rutas para el Módulo de Inventario (se mantienen)

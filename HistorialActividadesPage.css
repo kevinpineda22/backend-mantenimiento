@@ -1,0 +1,514 @@
+/* src/pages/Mantenimiento/HistorialActividades.css */
+
+/* --- Estilos Específicos del Historial --- */
+
+/* Estilos para el estado en la tabla (Chips) */
+.maint-historial__status-chip {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    min-width: 90px;
+}
+
+.maint-historial__status-pendiente {
+    background-color: #fffae6; /* Amarillo claro */
+    color: #ff9800; /* Amarillo oscuro */
+    border: 1px solid #ffc107;
+}
+
+.maint-historial__status-en_curso {
+    background-color: #e3f2fd; /* Azul claro */
+    color: #2196f3; /* Azul medio */
+    border: 1px solid #90caf9;
+}
+
+.maint-historial__status-completado {
+    background-color: #e8f5e9; /* Verde claro */
+    color: #4caf50; /* Verde medio */
+    border: 1px solid #81c784;
+}
+
+.maint-historial__status-no_completado {
+    background-color: #ffebee; /* Rojo claro */
+    color: #f44336; /* Rojo medio */
+    border: 1px solid #e57373;
+}
+
+/* Contenedor de Acciones de la Tabla */
+.maint-historial__actions-container {
+    display: flex;
+    gap: 4px; /* Espacio reducido para más botones */
+    justify-content: center;
+}
+
+/* Botones de Acción (Iconos) */
+.maint-historial__action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.maint-historial__action-btn:hover {
+    background-color: #f0f0f0;
+    transform: scale(1.05);
+}
+
+.maint-historial__action-btn .icon {
+    width: 20px;
+    height: 20px;
+}
+
+.maint-historial__edit-icon { color: var(--maint-color-primary-medium); }
+.maint-historial__delete-icon { color: #d33; }
+.maint-historial__comment-icon { color: #10B981; }
+
+/* Estilo para el botón de redirigir */
+.maint-historial__redirigir-btn {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.maint-historial__redirigir-btn:hover {
+  background-color: #e3f2fd !important;
+  transform: scale(1.1);
+}
+
+.maint-historial__redirigir-icon {
+  font-size: 18px;
+  display: inline-block;
+  transition: transform 0.3s ease;
+  color: #667eea;
+}
+
+.maint-historial__redirigir-btn:hover .maint-historial__redirigir-icon {
+  transform: rotate(180deg);
+  color: #764ba2;
+}
+
+/* Estilo para la imagen miniatura en la tabla */
+.maint-historial__thumbnail {
+    width: 45px;
+    height: 45px;
+    object-fit: cover;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid var(--maint-color-border-light);
+    transition: box-shadow 0.2s, transform 0.1s;
+}
+
+.maint-historial__thumbnail:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transform: scale(1.05);
+}
+
+.maint-historial__preview-link {
+    font-size: 0.85rem;
+    color: var(--maint-color-primary-dark);
+    text-decoration: underline;
+    margin-top: 4px;
+}
+
+/* --- Estilos del MODAL DE EDICIÓN (Mejor Estructura) --- */
+
+.maint-edit-modal-content.historial-edit {
+    max-width: 900px; /* Hacemos el modal de edición más ancho para dos columnas */
+    padding: 30px;
+}
+
+.maint-edit-modal-content.historial-edit h2 {
+    border-bottom: 2px solid var(--maint-color-primary-light);
+    padding-bottom: 10px;
+    margin-bottom: 25px;
+}
+
+.maint-historial__edit-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Dos columnas para campos principales */
+    gap: 20px 30px;
+}
+
+/* Estilo para los textareas grandes (Actividad/Observación) */
+.maint-historial__full-width {
+    grid-column: 1 / -1;
+}
+
+.maint-historial__photo-section {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--maint-color-border-light);
+    margin-top: 10px;
+}
+
+.maint-historial__photo-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.maint-historial__image-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Estilo de la tabla para mejor contraste */
+.maint-historial__datatable-wrapper {
+    border: 1px solid var(--maint-color-border-light);
+    border-radius: var(--maint-border-radius);
+    overflow: hidden;
+}
+
+/* Botón para eliminar imagen individual */
+.maint-delete-image-btn {
+    font-size: 0.7rem;
+    color: #d33;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+
+.maint-delete-image-btn:hover {
+    background-color: #ffebee;
+    text-decoration: none;
+}
+
+/* Indicador de usuario en el modal de seguimiento */
+.maint-historial__user-indicator {
+    background-color: #E0F2FE;
+    border-left: 4px solid #0891B2;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
+
+.maint-historial__user-indicator .user-text {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #0F766E;
+}
+
+/* Tooltip para el seguimiento */
+.maint-historial__seguimiento-hint {
+    font-size: 0.8em;
+    color: #6B7280;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+/* ⭐ NUEVOS ESTILOS PARA EL HISTORIAL DE SEGUIMIENTO */
+
+/* Contenedor principal del historial de seguimiento */
+.maint-seguimiento__historial {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background-color: #FAFAFA;
+  padding: 15px;
+  margin-bottom: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Contenedor de las entradas de seguimiento */
+.maint-seguimiento__entries {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* Cada entrada individual de seguimiento */
+.maint-seguimiento__entry {
+  background-color: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 14px;
+  position: relative;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.maint-seguimiento__entry:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #D1D5DB;
+  transform: translateY(-1px);
+}
+
+/* Header de cada entrada (autor y fecha) */
+.maint-seguimiento__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+/* Estilo para el autor */
+.maint-seguimiento__autor {
+  font-weight: 600;
+  font-size: 0.9em;
+  color: var(--maint-color-primary-dark, #2563EB);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Estilo para la fecha */
+.maint-seguimiento__fecha {
+  font-size: 0.8em;
+  color: #6B7280;
+  font-style: italic;
+  background-color: #F9FAFB;
+  padding: 3px 8px;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+}
+
+/* Contenido del seguimiento */
+.maint-seguimiento__contenido {
+  margin: 0;
+  font-size: 0.9em;
+  line-height: 1.5;
+  color: #374151;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background-color: #F8F9FA;
+  padding: 10px;
+  border-radius: 6px;
+  border-left: 3px solid var(--maint-color-primary-light, #93C5FD);
+}
+
+/* Estado vacío */
+.maint-seguimiento__empty {
+  text-align: center;
+  padding: 25px 15px;
+  color: #9CA3AF;
+  font-style: italic;
+  border: 2px dashed #E5E7EB;
+  border-radius: 8px;
+  background-color: white;
+  background-image: radial-gradient(circle at 25% 25%, #F3F4F6 2px, transparent 2px);
+  background-size: 20px 20px;
+}
+
+.maint-seguimiento__empty p {
+  margin: 0;
+  font-size: 0.95em;
+  font-weight: 500;
+}
+
+/* Scrollbar personalizada para el historial */
+.maint-seguimiento__historial::-webkit-scrollbar {
+  width: 8px;
+}
+
+.maint-seguimiento__historial::-webkit-scrollbar-track {
+  background: #F1F5F9;
+  border-radius: 4px;
+}
+
+.maint-seguimiento__historial::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.maint-seguimiento__historial::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Ajustes del modal de seguimiento */
+.maint-edit-modal-content.historial-seguimiento {
+  max-width: 750px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 25px;
+}
+
+.maint-edit-modal-content.historial-seguimiento h2 {
+  color: var(--maint-color-primary-dark, #1E40AF);
+  border-bottom: 2px solid var(--maint-color-primary-light, #93C5FD);
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+/* Indicador de usuario mejorado */
+.maint-historial__user-indicator {
+  background: linear-gradient(135deg, #E0F2FE 0%, #F0F9FF 100%);
+  border-left: 4px solid #0891B2;
+  padding: 12px 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.maint-historial__user-indicator .user-text {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: #0F766E;
+}
+
+/* Hint mejorado */
+.maint-historial__seguimiento-hint {
+  font-size: 0.8em;
+  color: #6B7280;
+  margin-top: 6px;
+  font-style: italic;
+  background-color: #F9FAFB;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border-left: 3px solid #E5E7EB;
+}
+
+/* Animaciones sutiles */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.maint-seguimiento__entry {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+/* Responsive para el historial de seguimiento */
+@media (max-width: 768px) {
+  .maint-seguimiento__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  
+  .maint-seguimiento__historial {
+    max-height: 250px;
+    padding: 10px;
+  }
+  
+  .maint-edit-modal-content.historial-seguimiento {
+    max-width: 95vw;
+    padding: 15px;
+  }
+  
+  .maint-seguimiento__entry {
+    padding: 10px;
+  }
+  
+  .maint-seguimiento__contenido {
+    font-size: 0.85em;
+    padding: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .maint-seguimiento__historial {
+    max-height: 200px;
+    padding: 8px;
+  }
+  
+  .maint-seguimiento__autor {
+    font-size: 0.8em;
+  }
+  
+  .maint-seguimiento__fecha {
+    font-size: 0.7em;
+  }
+  
+  .maint-seguimiento__empty {
+    padding: 15px 10px;
+  }
+}
+
+/* Estilo especial para entradas destacadas */
+.maint-seguimiento__entry.destacada {
+  border-left: 4px solid var(--maint-color-primary-medium, #3B82F6);
+  background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+}
+
+/* Hover mejorado para botones de seguimiento */
+.maint-historial__action-btn:hover .maint-historial__comment-icon {
+  color: #059669;
+  transform: scale(1.1);
+}
+
+/* Indicador visual para seguimientos existentes */
+.maint-historial__comment-indicator {
+  position: relative;
+}
+
+.maint-historial__comment-indicator::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background-color: #10B981;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px #E5E7EB;
+}
+
+/* ⭐ NUEVO: Estilo para entradas sin formato */
+.maint-seguimiento__entry.sin-formato {
+  border-left: 4px solid #F59E0B;
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+}
+
+.maint-seguimiento__entry.sin-formato .maint-seguimiento__autor {
+  color: #D97706;
+  font-style: italic;
+}
+
+.maint-seguimiento__entry.sin-formato .maint-seguimiento__fecha {
+  background-color: #FED7AA;
+  border-color: #FB923C;
+  color: #EA580C;
+}
+
+/* Employee Modal Styles */
+.maint-edit-modal-content.employee-modal {
+  max-width: 600px;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.maint-edit-modal-content.employee-modal h2 {
+  color: var(--maint-color-primary-dark);
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+.maint-edit-modal-content.employee-modal h3 {
+  color: var(--maint-color-primary-medium);
+  margin-top: 15px;
+  margin-bottom: 10px;
+}
+
+.maint-edit-modal-content.employee-modal p {
+  font-size: 0.9rem;
+  color: #555;
+  line-height: 1.6;
+}
+

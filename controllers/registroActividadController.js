@@ -620,3 +620,180 @@ export const obtenerHistorialPorResponsable = async (req, res) => {
     res.status(500).json({ error: "Error al obtener el historial filtrado por responsable" });
   }
 };
+
+// ✅ NUEVO ENDPOINT: Redirigir una tarea a otro responsable
+export const redirigirTarea = async (req, res) => {
+  const { id } = req.params;
+  const { responsable_anterior, nuevo_responsable, motivo_redireccion } = req.body;
+
+  // Validaciones
+  if (!responsable_anterior || !nuevo_responsable || !motivo_redireccion) {
+    return res.status(400).json({ 
+      error: "Faltan datos obligatorios: responsable_anterior, nuevo_responsable, motivo_redireccion." 
+    });
+  }
+
+  // Validar emails
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(nuevo_responsable)) {
+    return res.status(400).json({ error: "El nuevo responsable debe ser un email válido." });
+  }
+
+  try {
+    // 1. Obtener la tarea actual
+    const { data: tareaActual, error: fetchError } = await supabase
+      .from("registro_mantenimiento")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !tareaActual) {
+      return res.status(404).json({ error: "Tarea no encontrada." });
+    }
+
+    // 2. Verificar que el usuario actual sea el responsable
+    if (tareaActual.responsable !== responsable_anterior) {
+      return res.status(403).json({ 
+        error: "No tienes permiso para redirigir esta tarea. Solo el responsable actual puede hacerlo." 
+      });
+    }
+
+    // 3. Evitar redirigir a uno mismo
+    if (responsable_anterior === nuevo_responsable) {
+      return res.status(400).json({ 
+        error: "No puedes redirigir la tarea a ti mismo." 
+      });
+    }
+
+    // 4. Construir el registro de redirección para el campo observacion
+    const timestamp = new Date().toLocaleString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const registroRedireccion = `\n\n🔄 TAREA REDIRIGIDA\n` +
+      `📅 Fecha: ${timestamp}\n` +
+      `👤 De: ${responsable_anterior}\n` +
+      `👤 Para: ${nuevo_responsable}\n` +
+      `💬 Motivo: ${motivo_redireccion}\n` +
+      `--- Redirección registrada automáticamente ---`;
+
+    const observacionActualizada = (tareaActual.observacion || '') + registroRedireccion;
+
+    // 5. Actualizar la tarea en la BD
+    const { error: updateError } = await supabase
+      .from("registro_mantenimiento")
+      .update({
+        responsable: nuevo_responsable,
+        observacion: observacionActualizada,
+        // Opcional: Agregar campo de auditoría si existe
+        // responsable_anterior: responsable_anterior
+      })
+      .eq("id", id);
+
+    if (updateError) throw updateError;
+
+    // 6. Enviar notificación al nuevo responsable
+    try {
+      const subject = `🔔 Tarea Redirigida: ${tareaActual.sede} - ${tareaActual.actividad.substring(0, 50)}...`;
+      
+      const htmlBody = `
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f4f4f4;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">🔄 Tarea Redirigida</h1>
+              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Se te ha asignado una nueva responsabilidad</p>
+            </div>
+            
+            <!-- Content -->
+            <div style="padding: 30px;">
+              <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin-bottom: 20px; border-radius: 8px;">
+                <h2 style="color: #856404; margin: 0 0 10px 0; font-size: 18px;">📬 Tarea Redirigida desde:</h2>
+                <p style="margin: 0; font-size: 16px; font-weight: bold; color: #856404;">${responsable_anterior}</p>
+              </div>
+              
+              <!-- Task Details -->
+              <div style="background-color: #ffffff; border: 2px solid #e8e3ff; border-radius: 8px; padding: 25px; margin: 20px 0;">
+                <div style="margin-bottom: 15px;">
+                  <span style="display: inline-block; background-color: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📍 SEDE</span>
+                  <p style="margin: 5px 0; font-size: 18px; font-weight: bold; color: #333;">${tareaActual.sede}</p>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                  <span style="display: inline-block; background-color: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">🔧 ACTIVIDAD</span>
+                  <p style="margin: 5px 0; font-size: 16px; color: #333; line-height: 1.5;">${tareaActual.actividad}</p>
+                </div>
+                
+                ${tareaActual.fecha_final ? `
+                <div style="margin-bottom: 15px;">
+                  <span style="display: inline-block; background-color: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📅 FECHA LÍMITE</span>
+                  <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: #e74c3c;">${tareaActual.fecha_final}</p>
+                </div>
+                ` : ''}
+                
+                <div style="margin-bottom: 0;">
+                  <span style="display: inline-block; background-color: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">💬 MOTIVO DE LA REDIRECCIÓN</span>
+                  <div style="background: linear-gradient(135deg, #f8f9ff, #ffffff); border: 2px solid #e8e3ff; border-radius: 8px; padding: 15px; margin-top: 8px;">
+                    <p style="margin: 0; font-size: 15px; color: #333; line-height: 1.6; white-space: pre-wrap;">${motivo_redireccion}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Action Button -->
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="https://merkahorro.com/login" target="_blank" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px; text-decoration: none; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">⚡ Acceder al Sistema</a>
+              </div>
+              
+              <!-- Instructions -->
+              <div style="background-color: #e3f2fd; border: 1px solid #90caf9; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <p style="margin: 0; color: #0d47a1; font-size: 14px; line-height: 1.8;">
+                  <strong>📋 Pasos a seguir:</strong><br><br>
+                  🔑 <strong>1.</strong> Accede al sistema con tus credenciales<br>
+                  🔍 <strong>2.</strong> Revisa la tarea en "Tareas Recibidas"<br>
+                  📝 <strong>3.</strong> Lee el motivo de la redirección<br>
+                  🔧 <strong>4.</strong> Ejecuta la actividad o redirige nuevamente si corresponde
+                </p>
+              </div>
+            </div>
+            
+            <!-- Footer -->
+            <div style="background-color: #f8f9ff; padding: 20px; text-align: center; border-top: 1px solid #e8e3ff;">
+              <p style="margin: 0; color: #666; font-size: 12px;">Sistema de Gestión de Mantenimiento</p>
+              <p style="margin: 5px 0 0 0; color: #667eea; font-size: 12px; font-weight: bold;">Esta tarea ha sido transferida a tu responsabilidad</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      await sendEmail(nuevo_responsable, subject, htmlBody);
+      console.log(`📧 Notificación de redirección enviada a: ${nuevo_responsable}`);
+    } catch (emailError) {
+      console.error("❌ Error al enviar notificación de redirección:", emailError);
+      // No fallar la redirección si el email falla
+    }
+
+    // 7. Respuesta exitosa
+    res.status(200).json({ 
+      message: `Tarea redirigida exitosamente a ${nuevo_responsable}.`,
+      tarea_actualizada: {
+        id: tareaActual.id,
+        nuevo_responsable: nuevo_responsable,
+        motivo: motivo_redireccion
+      }
+    });
+
+  } catch (error) {
+    console.error("Error en redirigirTarea:", error);
+    res.status(500).json({ error: "Error interno del servidor al redirigir la tarea." });
+  }
+};
