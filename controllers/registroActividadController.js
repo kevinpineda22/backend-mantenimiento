@@ -698,7 +698,7 @@ export const redirigirTarea = async (req, res) => {
 
     // 6. Enviar notificación al nuevo responsable
     try {
-      const subject = `🔔 Tarea Redirigida: ${tareaActual.sede} - ${tareaActual.actividad.substring(0, 50)}...`;
+      const subject = `� Tarea Redirigida: ${tareaActual.sede}`;
       
       const htmlBody = `
         <html>
@@ -709,66 +709,77 @@ export const redirigirTarea = async (req, res) => {
         <body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f4f4f4;">
           <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
             <!-- Header -->
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+            <div style="background: linear-gradient(135deg, #210d65, #3d1a9e); padding: 30px; text-align: center;">
               <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">🔄 Tarea Redirigida</h1>
-              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Se te ha asignado una nueva responsabilidad</p>
+              <p style="color: #e8e3ff; margin: 10px 0 0 0; font-size: 16px;">Se te ha asignado una nueva responsabilidad</p>
             </div>
             
             <!-- Content -->
             <div style="padding: 30px;">
-              <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin-bottom: 20px; border-radius: 8px;">
-                <h2 style="color: #856404; margin: 0 0 10px 0; font-size: 18px;">📬 Tarea Redirigida desde:</h2>
-                <p style="margin: 0; font-size: 16px; font-weight: bold; color: #856404;">${responsable_anterior}</p>
+              <div style="background-color: #f8f9ff; border-left: 4px solid #210d65; padding: 20px; margin-bottom: 20px;">
+                <h2 style="color: #210d65; margin: 0 0 10px 0; font-size: 18px;">📬 Tarea Redirigida desde:</h2>
+                <p style="margin: 0; font-size: 16px; font-weight: bold; color: #3d1a9e;">${responsable_anterior}</p>
               </div>
               
               <!-- Task Details -->
               <div style="background-color: #ffffff; border: 2px solid #e8e3ff; border-radius: 8px; padding: 25px; margin: 20px 0;">
                 <div style="margin-bottom: 15px;">
-                  <span style="display: inline-block; background-color: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📍 SEDE</span>
+                  <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📍 SEDE</span>
                   <p style="margin: 5px 0; font-size: 18px; font-weight: bold; color: #333;">${tareaActual.sede}</p>
                 </div>
                 
                 <div style="margin-bottom: 15px;">
-                  <span style="display: inline-block; background-color: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">🔧 ACTIVIDAD</span>
+                  <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">🔧 ACTIVIDAD</span>
                   <p style="margin: 5px 0; font-size: 16px; color: #333; line-height: 1.5;">${tareaActual.actividad}</p>
                 </div>
                 
                 ${tareaActual.fecha_final ? `
                 <div style="margin-bottom: 15px;">
-                  <span style="display: inline-block; background-color: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📅 FECHA LÍMITE</span>
+                  <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📅 FECHA LÍMITE</span>
                   <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: #e74c3c;">${tareaActual.fecha_final}</p>
                 </div>
                 ` : ''}
                 
                 <div style="margin-bottom: 0;">
-                  <span style="display: inline-block; background-color: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">💬 MOTIVO DE LA REDIRECCIÓN</span>
-                  <div style="background: linear-gradient(135deg, #f8f9ff, #ffffff); border: 2px solid #e8e3ff; border-radius: 8px; padding: 15px; margin-top: 8px;">
-                    <p style="margin: 0; font-size: 15px; color: #333; line-height: 1.6; white-space: pre-wrap;">${motivo_redireccion}</p>
+                  <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">💬 MOTIVO DE LA REDIRECCIÓN</span>
+                  <div style="background: linear-gradient(135deg, #f8f9ff, #ffffff); border: 2px solid #e8e3ff; border-radius: 12px; padding: 20px; margin-top: 10px; position: relative; box-shadow: 0 2px 8px rgba(33, 13, 101, 0.1);">
+                    <div style="position: absolute; top: -8px; left: 20px; background-color: #210d65; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">💬</div>
+                    <div style="margin-top: 15px;">
+                      <div style="background-color: white; padding: 18px; border-radius: 8px; border-left: 4px solid #210d65; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
+                        <p style="margin: 0; font-size: 15px; color: #333; line-height: 1.7; white-space: pre-wrap; word-wrap: break-word;">${motivo_redireccion}</p>
+                      </div>
+                      <div style="margin-top: 12px; text-align: right;">
+                        <small style="color: #666; font-style: italic; font-size: 12px;">Redirigido por: ${responsable_anterior}</small>
+                      </div>
+                    </div>
                   </div>
+                </div>
+              </div>
+              
+              <!-- Action Section -->
+              <div style="background: linear-gradient(135deg, #e8f5e8, #f0fbf0); border: 2px solid #89DC00; border-radius: 12px; padding: 25px; margin: 25px 0; text-align: center; position: relative;">
+                <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background-color: #89DC00; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">📋</div>
+                <h3 style="color: #2d5016; margin: 20px 0 15px 0; font-size: 18px; font-weight: bold;">Próximos Pasos</h3>
+                <div style="text-align: left; max-width: 400px; margin: 0 auto;">
+                  <p style="margin: 8px 0; color: #2d5016; font-size: 14px; line-height: 1.6;">
+                    ✓ <strong>Accede al sistema</strong> con tus credenciales<br>
+                    ✓ <strong>Revisa la tarea</strong> en "Tareas Recibidas"<br>
+                    ✓ <strong>Lee el motivo</strong> de la redirección<br>
+                    ✓ <strong>Ejecuta la actividad</strong> o redirige si corresponde
+                  </p>
                 </div>
               </div>
               
               <!-- Action Button -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://merkahorro.com/login" target="_blank" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px; text-decoration: none; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">⚡ Acceder al Sistema</a>
-              </div>
-              
-              <!-- Instructions -->
-              <div style="background-color: #e3f2fd; border: 1px solid #90caf9; border-radius: 8px; padding: 20px; margin: 20px 0;">
-                <p style="margin: 0; color: #0d47a1; font-size: 14px; line-height: 1.8;">
-                  <strong>📋 Pasos a seguir:</strong><br><br>
-                  🔑 <strong>1.</strong> Accede al sistema con tus credenciales<br>
-                  🔍 <strong>2.</strong> Revisa la tarea en "Tareas Recibidas"<br>
-                  📝 <strong>3.</strong> Lee el motivo de la redirección<br>
-                  🔧 <strong>4.</strong> Ejecuta la actividad o redirige nuevamente si corresponde
-                </p>
+                <a href="https://merkahorro.com/login" target="_blank" style="background: linear-gradient(135deg, #210d65, #3d1a9e); color: white; padding: 15px 30px; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 16px; text-decoration: none; box-shadow: 0 4px 12px rgba(33, 13, 101, 0.3); transition: all 0.3s ease;">⚡ Acceder al Sistema</a>
               </div>
             </div>
             
             <!-- Footer -->
             <div style="background-color: #f8f9ff; padding: 20px; text-align: center; border-top: 1px solid #e8e3ff;">
               <p style="margin: 0; color: #666; font-size: 12px;">Sistema de Gestión de Mantenimiento</p>
-              <p style="margin: 5px 0 0 0; color: #667eea; font-size: 12px; font-weight: bold;">Esta tarea ha sido transferida a tu responsabilidad</p>
+              <p style="margin: 5px 0 0 0; color: #210d65; font-size: 12px; font-weight: bold;">Esta tarea ha sido transferida a tu responsabilidad</p>
             </div>
           </div>
         </body>
