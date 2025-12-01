@@ -590,15 +590,39 @@ export const obtenerHistorialPorResponsable = async (req, res) => {
     return res.status(400).json({ error: "El correo del responsable es requerido para el filtro." });
   }
 
+  // ⭐ MAPA DE LÍDERES A SEDES
+  const SEDE_POR_LIDER = {
+    "lideroperativo1@merkahorrosas.com": "Copacabana Plaza",
+    "adminvillahermosa@merkahorrosas.com": "Villa Hermosa",
+    "admingirardotaparque@merkahorrosas.com": "Girardota Parque",
+    "admingirardotallano@merkahorrosas.com": "Girardota llano",
+    "adminlasvegas@merkahorrosas.com": "Copacabana Vegas",
+    "adminbarbosa@merkahorrosas.com": "Barbosa",
+    "adminsanjuan@merkahorrosas.com": "Copacabana San Juan",
+    "juanmerkahorro@gmail.com": "Copacabana Plaza",
+    "johanmerkahorro777@gmail.com": "Girardota Parque"
+    
+  };
+
   try {
     console.log(`🔍 Buscando tareas para: ${responsableEmail}`);
 
-    // ⭐ BÚSQUEDA MEJORADA: Buscar tanto en responsable como en responsables_grupo
-    const { data, error } = await supabase
+    let query = supabase
       .from("registro_mantenimiento")
-      .select("*")
-      .or(`responsable.eq.${responsableEmail},responsables_grupo.like.%${responsableEmail}%`)
-      .order("created_at", { ascending: false });
+      .select("*");
+
+    const sedeLider = SEDE_POR_LIDER[responsableEmail];
+
+    if (sedeLider) {
+      console.log(`👑 Usuario identificado como líder de sede: ${sedeLider}`);
+      // Si es líder, ve sus tareas O las de su sede
+      query = query.or(`responsable.eq.${responsableEmail},responsables_grupo.like.%${responsableEmail}%,sede.eq.${sedeLider}`);
+    } else {
+      // Usuario normal
+      query = query.or(`responsable.eq.${responsableEmail},responsables_grupo.like.%${responsableEmail}%`);
+    }
+
+    const { data, error } = await query.order("created_at", { ascending: false });
 
     if (error) throw error;
 
