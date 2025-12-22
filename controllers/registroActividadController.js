@@ -11,11 +11,11 @@ const subirImagen = async (file, carpeta) => {
   let nombreLimpio = file.originalname
     .replace(/\s/g, "_") // Reemplazar espacios con guiones bajos
     .replace(/[^a-zA-Z0-9_.-]/g, "") // Eliminar caracteres especiales
-	.normalize("NFD") // Descomponer caracteres acentuados
+    .normalize("NFD") // Descomponer caracteres acentuados
     .replace(/[\u0300-\u036f]/g, ""); // Eliminar diacríticos
 
   const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
-  
+
   try {
     // Subir el archivo directamente con su tipo original
     const { error } = await supabase.storage
@@ -35,7 +35,6 @@ const subirImagen = async (file, carpeta) => {
     throw new Error("Error al subir imagen: " + err.message);
   }
 };
-
 
 // ==========================================================
 // 1. ENDPOINT DE ASIGNACIÓN (LÍDER/SST) - TIENE LÓGICA DE CORREO
@@ -58,29 +57,45 @@ export const registrarTareaAsignada = async (req, res) => {
     creador_email,
     enviarCorreo, // ⭐ NUEVO: Recibir valor de la casilla
     designado, // ⭐ NUEVO: Campo designado opcional
-	nombre_empleado,
+    nombre_empleado,
     cedula_empleado,
     cargo_empleado,
     nombre_solicitante, // ✅ CAPTURAR nombre_solicitante del req.body
+    sanidad, // ⭐ NUEVO: Recibir valor de sanidad
   } = req.body;
 
   const fotoAntes = req.files?.fotoAntes?.[0];
   const fotoDespues = req.files?.fotoDespues?.[0];
 
-  if (!sede || !actividad || !fechaInicio || !estado || !responsable || !creador_email) {
-    return res.status(400).json({ error: "Faltan campos obligatorios para la asignación." });
+  if (
+    !sede ||
+    !actividad ||
+    !fechaInicio ||
+    !estado ||
+    !responsable ||
+    !creador_email
+  ) {
+    return res
+      .status(400)
+      .json({ error: "Faltan campos obligatorios para la asignación." });
   }
 
   try {
-    const fechaInicioStr = Array.isArray(fechaInicio) ? fechaInicio[0] : fechaInicio;
-    const fechaFinalStr = Array.isArray(fechaFinal) ? fechaFinal[0] : fechaFinal;
+    const fechaInicioStr = Array.isArray(fechaInicio)
+      ? fechaInicio[0]
+      : fechaInicio;
+    const fechaFinalStr = Array.isArray(fechaFinal)
+      ? fechaFinal[0]
+      : fechaFinal;
 
     const urlAntes = fotoAntes ? await subirImagen(fotoAntes, "antes") : null;
-    const urlDespues = fotoDespues ? await subirImagen(fotoDespues, "despues") : null;
+    const urlDespues = fotoDespues
+      ? await subirImagen(fotoDespues, "despues")
+      : null;
 
     // ⭐ NUEVA LÓGICA: Manejo de múltiples responsables
-    const responsables = responsable.includes(';') 
-      ? responsable.split(';').map(email => email.trim()) 
+    const responsables = responsable.includes(";")
+      ? responsable.split(";").map((email) => email.trim())
       : [responsable];
 
     console.log(`📧 Responsables procesados:`, responsables);
@@ -97,38 +112,48 @@ export const registrarTareaAsignada = async (req, res) => {
     // ✅ INSERCIÓN CON nombre_solicitante
     const { error: insertError } = await supabase
       .from("registro_mantenimiento")
-      .insert([{
-        sede,
-        actividad,
-        fecha_inicio: fechaInicioStr,
-        fecha_final: fechaFinalStr,
-        precio: precio ? parseFloat(precio) : null, // ⭐ PRECIO ES OPCIONAL
-        observacion,
-        estado,
-        responsable: responsablePrincipal,
-        responsables_grupo: responsablesGrupo, // ⭐ CAMPO CLAVE PARA TAREAS GRUPALES
-        creador_email: creador_email,
-        foto_antes_url: urlAntes,
-        foto_despues_url: urlDespues,
-        designado: designado || null, // ⭐ DESIGNADO ES OPCIONAL
-		nombre_empleado: nombre_empleado || null,
-        cedula_empleado: cedula_empleado || null,
-        cargo_empleado: cargo_empleado || null,
-        nombre_solicitante: nombre_solicitante || null, // ✅ INSERTAR nombre_solicitante
-      }]);
+      .insert([
+        {
+          sede,
+          actividad,
+          fecha_inicio: fechaInicioStr,
+          fecha_final: fechaFinalStr,
+          precio: precio ? parseFloat(precio) : null, // ⭐ PRECIO ES OPCIONAL
+          observacion,
+          estado,
+          responsable: responsablePrincipal,
+          responsables_grupo: responsablesGrupo, // ⭐ CAMPO CLAVE PARA TAREAS GRUPALES
+          creador_email: creador_email,
+          foto_antes_url: urlAntes,
+          foto_despues_url: urlDespues,
+          designado: designado || null, // ⭐ DESIGNADO ES OPCIONAL
+          nombre_empleado: nombre_empleado || null,
+          cedula_empleado: cedula_empleado || null,
+          cargo_empleado: cargo_empleado || null,
+          nombre_solicitante: nombre_solicitante || null, // ✅ INSERTAR nombre_solicitante
+          sanidad: sanidad === "true" || sanidad === true, // ⭐ NUEVO: Insertar sanidad
+        },
+      ]);
 
     if (insertError) {
       console.error("❌ Error al insertar:", insertError);
       throw insertError;
     }
 
-    console.log(`✅ Tarea guardada exitosamente ${responsables.length > 1 ? 'como GRUPAL' : 'como INDIVIDUAL'}`);
-    console.log(`✅ Nombre del solicitante guardado: "${nombre_solicitante || 'N/A'}"`); // ✅ Confirmación
+    console.log(
+      `✅ Tarea guardada exitosamente ${
+        responsables.length > 1 ? "como GRUPAL" : "como INDIVIDUAL"
+      }`
+    );
+    console.log(
+      `✅ Nombre del solicitante guardado: "${nombre_solicitante || "N/A"}"`
+    ); // ✅ Confirmación
 
     // ⭐ LÓGICA DE NOTIFICACIÓN MÚLTIPLE (CONDICIONAL)
-    if (enviarCorreo === 'true') { // ⭐ VERIFICAR EL VALOR DE LA CASILLA
+    if (enviarCorreo === "true") {
+      // ⭐ VERIFICAR EL VALOR DE LA CASILLA
       const subject = `🔧 Nueva Tarea de Mantenimiento - ${sede}`;
-      
+
       // ⭐ PLANTILLA HTML PROFESIONAL BASE
       const createHtmlBody = (isGroupTask = false) => `
         <html>
@@ -140,15 +165,21 @@ export const registrarTareaAsignada = async (req, res) => {
           <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
             <!-- Header -->
             <div style="background: linear-gradient(135deg, #210d65, #3d1a9e); padding: 30px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">🔧 Nueva Tarea ${isGroupTask ? ' ' : ''}Asignada</h1>
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">🔧 Nueva Tarea ${
+                isGroupTask ? " " : ""
+              }Asignada</h1>
               <p style="color: #e8e3ff; margin: 10px 0 0 0; font-size: 16px;">Sistema de Mantenimiento</p>
             </div>
             
             <!-- Content -->
             <div style="padding: 30px;">
               <div style="background-color: #f8f9ff; border-left: 4px solid #210d65; padding: 20px; margin-bottom: 20px;">
-                <h2 style="color: #210d65; margin: 0 0 15px 0; font-size: 20px;">¡Se te ha asignado una nueva tarea${isGroupTask ? '' : ''}!</h2>
-                <p style="color: #666; margin: 0; line-height: 1.6;">Has recibido una nueva asignación de mantenimiento que requiere tu atención${isGroupTask ? ' junto con tu equipo de trabajo' : ''}.</p>
+                <h2 style="color: #210d65; margin: 0 0 15px 0; font-size: 20px;">¡Se te ha asignado una nueva tarea${
+                  isGroupTask ? "" : ""
+                }!</h2>
+                <p style="color: #666; margin: 0; line-height: 1.6;">Has recibido una nueva asignación de mantenimiento que requiere tu atención${
+                  isGroupTask ? " junto con tu equipo de trabajo" : ""
+                }.</p>
               </div>
               
               <!-- Details Card -->
@@ -165,17 +196,23 @@ export const registrarTareaAsignada = async (req, res) => {
                 
                 <div style="margin-bottom: 15px;">
                   <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📅 FECHA LÍMITE</span>
-                  <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: ${fechaFinalStr ? '#e74c3c' : '#666'};">${fechaFinalStr || 'No especificada'}</p>
+                  <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: ${
+                    fechaFinalStr ? "#e74c3c" : "#666"
+                  };">${fechaFinalStr || "No especificada"}</p>
                 </div>
                 
-                ${observacion ? `
+                ${
+                  observacion
+                    ? `
                 <div style="margin-bottom: 15px;">
                   <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📝 OBSERVACIONES</span>
                   <div style="background-color: #f8f9ff; padding: 15px; border-radius: 8px; border-left: 3px solid #210d65; margin-top: 8px;">
                     <p style="margin: 0; font-size: 15px; color: #333; line-height: 1.6; white-space: pre-wrap;">${observacion}</p>
                   </div>
                 </div>
-                ` : ''}
+                `
+                    : ""
+                }
                 
                 <div style="margin-bottom: 0;">
                   <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">👤 ASIGNADO POR</span>
@@ -183,7 +220,9 @@ export const registrarTareaAsignada = async (req, res) => {
                 </div>
               </div>
               
-              ${isGroupTask ? `
+              ${
+                isGroupTask
+                  ? `
               <!-- Team Assignment Card -->
               <div style="background: linear-gradient(135deg, #e3f2fd, #f3e5f5); border: 2px solid #81c784; border-radius: 12px; padding: 25px; margin: 25px 0; position: relative;">
                 <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background-color: #4caf50; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">👥</div>
@@ -191,9 +230,13 @@ export const registrarTareaAsignada = async (req, res) => {
                 <div style="background-color: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                   <p style="margin: 0 0 15px 0; color: #2e7d32; font-size: 14px; font-weight: bold;">👥 Miembros del equipo:</p>
                   <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">
-                    ${responsables.map(email => `
+                    ${responsables
+                      .map(
+                        (email) => `
                       <span style="background-color: #e8f5e8; color: #2e7d32; padding: 6px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; border: 1px solid #81c784;">${email}</span>
-                    `).join('')}
+                    `
+                      )
+                      .join("")}
                   </div>
                   <div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 15px; border-radius: 8px;">
                     <p style="margin: 0; color: #ef6c00; font-size: 13px; line-height: 1.6;">
@@ -204,7 +247,9 @@ export const registrarTareaAsignada = async (req, res) => {
                   </div>
                 </div>
               </div>
-              ` : ''}
+              `
+                  : ""
+              }
               
               <!-- Action Button -->
               <div style="text-align: center; margin: 30px 0;">
@@ -237,38 +282,48 @@ export const registrarTareaAsignada = async (req, res) => {
       if (responsables.length > 1) {
         // Email grupal con diseño especial
         const htmlBodyGrupo = createHtmlBody(true);
-        
+
         // Enviar a todos los responsables
-        const emailPromises = responsables.map(email => 
+        const emailPromises = responsables.map((email) =>
           sendEmail(email, subject, htmlBodyGrupo)
         );
-        
+
         await Promise.all(emailPromises);
-        console.log(`📧 Notificación grupal enviada a ${responsables.length} responsables: ${responsables.join(', ')}`);
+        console.log(
+          `📧 Notificación grupal enviada a ${
+            responsables.length
+          } responsables: ${responsables.join(", ")}`
+        );
       } else {
         // Envío individual con diseño estándar
         const htmlBodyIndividual = createHtmlBody(false);
-        
+
         await sendEmail(responsablePrincipal, subject, htmlBodyIndividual);
-        console.log(`📧 Notificación individual enviada a: ${responsablePrincipal}`);
+        console.log(
+          `📧 Notificación individual enviada a: ${responsablePrincipal}`
+        );
       }
     } else {
-      console.log('❌ Notificación de asignación de tarea suprimida por el usuario.');
+      console.log(
+        "❌ Notificación de asignación de tarea suprimida por el usuario."
+      );
     }
 
-    return res.status(200).json({ 
-      message: responsables.length > 1 
-        ? `Tarea asignada y notificada a ${responsables.length} responsables exitosamente.`
-        : "Tarea asignada y notificada exitosamente."
+    return res.status(200).json({
+      message:
+        responsables.length > 1
+          ? `Tarea asignada y notificada a ${responsables.length} responsables exitosamente.`
+          : "Tarea asignada y notificada exitosamente.",
     });
   } catch (err) {
     console.error("Error en registrarTareaAsignada:", err);
-    return res.status(500).json({ error: err.message || "Error interno del servidor al asignar la tarea" });
+    return res
+      .status(500)
+      .json({
+        error: err.message || "Error interno del servidor al asignar la tarea",
+      });
   }
 };
-
-
-
 
 export const obtenerHistorialCompleto = async (req, res) => {
   try {
@@ -306,29 +361,47 @@ export const actualizarActividadCompleta = async (req, res) => {
   const fotoDespues = req.files?.fotoDespues?.[0];
 
   if (!sede || !actividad || !fechaInicio || !estado || !responsable) {
-    return res.status(400).json({ error: "Faltan campos obligatorios para actualizar." });
+    return res
+      .status(400)
+      .json({ error: "Faltan campos obligatorios para actualizar." });
   }
 
   try {
-    const fechaInicioStr = Array.isArray(fechaInicio) ? fechaInicio[0] : fechaInicio;
-    const fechaFinalStr = Array.isArray(fechaFinal) ? fechaFinal[0] : fechaFinal;
+    const fechaInicioStr = Array.isArray(fechaInicio)
+      ? fechaInicio[0]
+      : fechaInicio;
+    const fechaFinalStr = Array.isArray(fechaFinal)
+      ? fechaFinal[0]
+      : fechaFinal;
 
     const { data: registroExistente, error: fetchError } = await supabase
       .from("registro_mantenimiento")
-      .select("foto_antes_url, foto_despues_url, creador_email, estado, sede, actividad, responsable")
+      .select(
+        "foto_antes_url, foto_despues_url, creador_email, estado, sede, actividad, responsable"
+      )
       .eq("id", id)
       .single();
 
     if (fetchError || !registroExistente) {
-      return res.status(404).json({ error: "Registro de actividad no encontrado" });
+      return res
+        .status(404)
+        .json({ error: "Registro de actividad no encontrado" });
     }
 
-    const urlAntes = fotoAntes ? await subirImagen(fotoAntes, "antes") : registroExistente.foto_antes_url;
-    const urlDespues = fotoDespues ? await subirImagen(fotoDespues, "despues") : registroExistente.foto_despues_url;
+    const urlAntes = fotoAntes
+      ? await subirImagen(fotoAntes, "antes")
+      : registroExistente.foto_antes_url;
+    const urlDespues = fotoDespues
+      ? await subirImagen(fotoDespues, "despues")
+      : registroExistente.foto_despues_url;
 
     const nuevoEstado = estado;
-    const yaEstabaCompletado = ['completado', 'no_completado'].includes(registroExistente.estado);
-    const estaFinalizando = ['completado', 'no_completado'].includes(nuevoEstado) && !yaEstabaCompletado;
+    const yaEstabaCompletado = ["completado", "no_completado"].includes(
+      registroExistente.estado
+    );
+    const estaFinalizando =
+      ["completado", "no_completado"].includes(nuevoEstado) &&
+      !yaEstabaCompletado;
 
     const { error: updateError } = await supabase
       .from("registro_mantenimiento")
@@ -353,11 +426,16 @@ export const actualizarActividadCompleta = async (req, res) => {
 
     // ⭐ LÓGICA DE NOTIFICACIÓN DE FINALIZACIÓN MEJORADA
     // Condición: Solo envía si el frontend manda el flag Y si el estado no estaba ya finalizado en la BD.
-    if (notificarFinalizacion === "true" && estaFinalizando && registroExistente.creador_email) {
+    if (
+      notificarFinalizacion === "true" &&
+      estaFinalizando &&
+      registroExistente.creador_email
+    ) {
       try {
-        const estadoTexto = nuevoEstado === 'completado' ? '✅ COMPLETADA' : '❌ NO COMPLETADA';
+        const estadoTexto =
+          nuevoEstado === "completado" ? "✅ COMPLETADA" : "❌ NO COMPLETADA";
         const subject = `${estadoTexto}: Tarea en ${registroExistente.sede}`;
-        
+
         const htmlBody = `
           <html>
           <head>
@@ -367,7 +445,9 @@ export const actualizarActividadCompleta = async (req, res) => {
           <body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f4f4f4;">
             <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
               <!-- Header -->
-              <div style="background: linear-gradient(135deg, #210d65, ${nuevoEstado === 'completado' ? '#210d65' : '#dc3545'}); padding: 30px; text-align: center;">
+              <div style="background: linear-gradient(135deg, #210d65, ${
+                nuevoEstado === "completado" ? "#210d65" : "#dc3545"
+              }); padding: 30px; text-align: center;">
                 <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">${estadoTexto}</h1>
                 <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Tarea Finalizada</p>
               </div>
@@ -385,25 +465,41 @@ export const actualizarActividadCompleta = async (req, res) => {
                   <div style="display: grid; gap: 15px;">
                     <div>
                       <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📍 SEDE</span>
-                      <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: #333;">${registroExistente.sede}</p>
+                      <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: #333;">${
+                        registroExistente.sede
+                      }</p>
                     </div>
                     
                     <div>
                       <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">🔧 HALLAZGO</span>
-                      <p style="margin: 5px 0; font-size: 16px; color: #333; line-height: 1.5;">${registroExistente.actividad}</p>
+                      <p style="margin: 5px 0; font-size: 16px; color: #333; line-height: 1.5;">${
+                        registroExistente.actividad
+                      }</p>
                     </div>
                     
                     <div>
                       <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">👤 EJECUTADO POR</span>
-                      <p style="margin: 5px 0; font-size: 16px; color: #333;">${registroExistente.responsable}</p>
+                      <p style="margin: 5px 0; font-size: 16px; color: #333;">${
+                        registroExistente.responsable
+                      }</p>
                     </div>
                     
                     <div>
                       <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📅 FINALIZADO EL</span>
-                      <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: #333;">${new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                      <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: #333;">${new Date().toLocaleDateString(
+                        "es-ES",
+                        {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        }
+                      )}</p>
                     </div>
                     
-                    ${observacion ? `
+                    ${
+                      observacion
+                        ? `
                     <div style="margin-top: 20px;">
                       
                       <div style="background: linear-gradient(135deg, #f8f9ff, #ffffff); border: 2px solid #e8e3ff; border-radius: 12px; padding: 20px; margin-top: 10px; position: relative; box-shadow: 0 2px 8px rgba(33, 13, 101, 0.1);">
@@ -419,7 +515,9 @@ export const actualizarActividadCompleta = async (req, res) => {
                         </div>
                       </div>
                     </div>
-                    ` : ''}
+                    `
+                        : ""
+                    }
                   </div>
                 </div>
                 
@@ -452,14 +550,20 @@ export const actualizarActividadCompleta = async (req, res) => {
           </body>
           </html>
         `;
-        
+
         await sendEmail(registroExistente.creador_email, subject, htmlBody);
-        console.log(`📧 Notificación de finalización enviada a: ${registroExistente.creador_email}`);
+        console.log(
+          `📧 Notificación de finalización enviada a: ${registroExistente.creador_email}`
+        );
       } catch (emailError) {
-        console.error("❌ Error al enviar notificación de finalización:", emailError);
+        console.error(
+          "❌ Error al enviar notificación de finalización:",
+          emailError
+        );
         // No fallar la actualización si el email falla
       }
-    }    res.json({ message: "Actividad actualizada correctamente" });
+    }
+    res.json({ message: "Actividad actualizada correctamente" });
   } catch (error) {
     console.error("Error en actualizarActividadCompleta:", error);
     res.status(500).json({ error: "Error al actualizar la actividad" });
@@ -564,7 +668,9 @@ export const obtenerHistorialPorCreador = async (req, res) => {
   const { creadorEmail } = req.query;
 
   if (!creadorEmail) {
-    return res.status(400).json({ error: "El correo del creador es requerido para el filtro." });
+    return res
+      .status(400)
+      .json({ error: "El correo del creador es requerido para el filtro." });
   }
 
   try {
@@ -587,7 +693,11 @@ export const obtenerHistorialPorResponsable = async (req, res) => {
   const { responsableEmail } = req.query;
 
   if (!responsableEmail) {
-    return res.status(400).json({ error: "El correo del responsable es requerido para el filtro." });
+    return res
+      .status(400)
+      .json({
+        error: "El correo del responsable es requerido para el filtro.",
+      });
   }
 
   // ⭐ MAPA DE LÍDERES A SEDES
@@ -600,67 +710,80 @@ export const obtenerHistorialPorResponsable = async (req, res) => {
     "adminbarbosa@merkahorrosas.com": "Barbosa",
     "adminsanjuan@merkahorrosas.com": "Copacabana San Juan",
     "juanmerkahorro@gmail.com": "Copacabana Plaza",
-    "johanmerkahorro777@gmail.com": "Girardota Parque"
-    
+    "johanmerkahorro777@gmail.com": "Girardota Parque",
   };
 
   try {
     console.log(`🔍 Buscando tareas para: ${responsableEmail}`);
 
-    let query = supabase
-      .from("registro_mantenimiento")
-      .select("*");
+    let query = supabase.from("registro_mantenimiento").select("*");
 
     const sedeLider = SEDE_POR_LIDER[responsableEmail];
 
     if (sedeLider) {
       console.log(`👑 Usuario identificado como líder de sede: ${sedeLider}`);
       // Si es líder, ve sus tareas O las de su sede
-      query = query.or(`responsable.eq.${responsableEmail},responsables_grupo.like.%${responsableEmail}%,sede.eq.${sedeLider}`);
+      query = query.or(
+        `responsable.eq.${responsableEmail},responsables_grupo.like.%${responsableEmail}%,sede.eq.${sedeLider}`
+      );
     } else {
       // Usuario normal
-      query = query.or(`responsable.eq.${responsableEmail},responsables_grupo.like.%${responsableEmail}%`);
+      query = query.or(
+        `responsable.eq.${responsableEmail},responsables_grupo.like.%${responsableEmail}%`
+      );
     }
 
-    const { data, error } = await query.order("created_at", { ascending: false });
+    const { data, error } = await query.order("created_at", {
+      ascending: false,
+    });
 
     if (error) throw error;
 
     console.log(`📋 Tareas encontradas para ${responsableEmail}:`, data.length);
-    
+
     // ⭐ LOG PARA DEBUG: Mostrar qué tareas son grupales
-    const tareasGrupales = data.filter(tarea => tarea.responsables_grupo);
+    const tareasGrupales = data.filter((tarea) => tarea.responsables_grupo);
     console.log(`👥 Tareas grupales encontradas:`, tareasGrupales.length);
-    
+
     if (tareasGrupales.length > 0) {
-      tareasGrupales.forEach(tarea => {
-        console.log(`   - ID ${tarea.id}: ${tarea.sede} - responsables_grupo: "${tarea.responsables_grupo}"`);
+      tareasGrupales.forEach((tarea) => {
+        console.log(
+          `   - ID ${tarea.id}: ${tarea.sede} - responsables_grupo: "${tarea.responsables_grupo}"`
+        );
       });
     }
 
     res.status(200).json(data);
   } catch (err) {
     console.error("Error en obtenerHistorialPorResponsable:", err);
-    res.status(500).json({ error: "Error al obtener el historial filtrado por responsable" });
+    res
+      .status(500)
+      .json({
+        error: "Error al obtener el historial filtrado por responsable",
+      });
   }
 };
 
 // ✅ NUEVO ENDPOINT: Redirigir una tarea a otro responsable
 export const redirigirTarea = async (req, res) => {
   const { id } = req.params;
-  const { responsable_anterior, nuevo_responsable, motivo_redireccion } = req.body;
+  const { responsable_anterior, nuevo_responsable, motivo_redireccion } =
+    req.body;
 
   // Validaciones
   if (!responsable_anterior || !nuevo_responsable || !motivo_redireccion) {
-    return res.status(400).json({ 
-      error: "Faltan datos obligatorios: responsable_anterior, nuevo_responsable, motivo_redireccion." 
+    return res.status(400).json({
+      error:
+        "Faltan datos obligatorios: responsable_anterior, nuevo_responsable, motivo_redireccion.",
     });
   }
 
   // Validar emails
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(nuevo_responsable)) {
-    return res.status(400).json({ error: "El nuevo responsable debe ser un email válido." });
+    return res
+      .status(400)
+      .json({ error: "El nuevo responsable debe ser un email válido." });
   }
 
   try {
@@ -677,35 +800,38 @@ export const redirigirTarea = async (req, res) => {
 
     // 2. Verificar que el usuario actual sea el responsable
     if (tareaActual.responsable !== responsable_anterior) {
-      return res.status(403).json({ 
-        error: "No tienes permiso para redirigir esta tarea. Solo el responsable actual puede hacerlo." 
+      return res.status(403).json({
+        error:
+          "No tienes permiso para redirigir esta tarea. Solo el responsable actual puede hacerlo.",
       });
     }
 
     // 3. Evitar redirigir a uno mismo
     if (responsable_anterior === nuevo_responsable) {
-      return res.status(400).json({ 
-        error: "No puedes redirigir la tarea a ti mismo." 
+      return res.status(400).json({
+        error: "No puedes redirigir la tarea a ti mismo.",
       });
     }
 
     // 4. Construir el registro de redirección para el campo observacion
-    const timestamp = new Date().toLocaleString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    const timestamp = new Date().toLocaleString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
 
-    const registroRedireccion = `\n\n🔄 TAREA REDIRIGIDA\n` +
+    const registroRedireccion =
+      `\n\n🔄 TAREA REDIRIGIDA\n` +
       `📅 Fecha: ${timestamp}\n` +
       `👤 De: ${responsable_anterior}\n` +
       `👤 Para: ${nuevo_responsable}\n` +
       `💬 Motivo: ${motivo_redireccion}\n` +
       `--- Redirección registrada automáticamente ---`;
 
-    const observacionActualizada = (tareaActual.observacion || '') + registroRedireccion;
+    const observacionActualizada =
+      (tareaActual.observacion || "") + registroRedireccion;
 
     // 5. Actualizar la tarea en la BD
     const { error: updateError } = await supabase
@@ -723,7 +849,7 @@ export const redirigirTarea = async (req, res) => {
     // 6. Enviar notificación al nuevo responsable
     try {
       const subject = `� Tarea Redirigida: ${tareaActual.sede}`;
-      
+
       const htmlBody = `
         <html>
         <head>
@@ -749,20 +875,28 @@ export const redirigirTarea = async (req, res) => {
               <div style="background-color: #ffffff; border: 2px solid #e8e3ff; border-radius: 8px; padding: 25px; margin: 20px 0;">
                 <div style="margin-bottom: 15px;">
                   <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📍 SEDE</span>
-                  <p style="margin: 5px 0; font-size: 18px; font-weight: bold; color: #333;">${tareaActual.sede}</p>
+                  <p style="margin: 5px 0; font-size: 18px; font-weight: bold; color: #333;">${
+                    tareaActual.sede
+                  }</p>
                 </div>
                 
                 <div style="margin-bottom: 15px;">
                   <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">🔧 ACTIVIDAD</span>
-                  <p style="margin: 5px 0; font-size: 16px; color: #333; line-height: 1.5;">${tareaActual.actividad}</p>
+                  <p style="margin: 5px 0; font-size: 16px; color: #333; line-height: 1.5;">${
+                    tareaActual.actividad
+                  }</p>
                 </div>
                 
-                ${tareaActual.fecha_final ? `
+                ${
+                  tareaActual.fecha_final
+                    ? `
                 <div style="margin-bottom: 15px;">
                   <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">📅 FECHA LÍMITE</span>
                   <p style="margin: 5px 0; font-size: 16px; font-weight: bold; color: #e74c3c;">${tareaActual.fecha_final}</p>
                 </div>
-                ` : ''}
+                `
+                    : ""
+                }
                 
                 <div style="margin-bottom: 0;">
                   <span style="display: inline-block; background-color: #210d65; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px;">💬 MOTIVO DE LA REDIRECCIÓN</span>
@@ -809,26 +943,32 @@ export const redirigirTarea = async (req, res) => {
         </body>
         </html>
       `;
-      
+
       await sendEmail(nuevo_responsable, subject, htmlBody);
-      console.log(`📧 Notificación de redirección enviada a: ${nuevo_responsable}`);
+      console.log(
+        `📧 Notificación de redirección enviada a: ${nuevo_responsable}`
+      );
     } catch (emailError) {
-      console.error("❌ Error al enviar notificación de redirección:", emailError);
+      console.error(
+        "❌ Error al enviar notificación de redirección:",
+        emailError
+      );
       // No fallar la redirección si el email falla
     }
 
     // 7. Respuesta exitosa
-    res.status(200).json({ 
+    res.status(200).json({
       message: `Tarea redirigida exitosamente a ${nuevo_responsable}.`,
       tarea_actualizada: {
         id: tareaActual.id,
         nuevo_responsable: nuevo_responsable,
-        motivo: motivo_redireccion
-      }
+        motivo: motivo_redireccion,
+      },
     });
-
   } catch (error) {
     console.error("Error en redirigirTarea:", error);
-    res.status(500).json({ error: "Error interno del servidor al redirigir la tarea." });
+    res
+      .status(500)
+      .json({ error: "Error interno del servidor al redirigir la tarea." });
   }
 };
