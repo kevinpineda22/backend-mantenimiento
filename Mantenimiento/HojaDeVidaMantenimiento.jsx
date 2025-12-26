@@ -7,6 +7,10 @@ import {
   FaDownload,
   FaTimes,
   FaFilter,
+  FaFilePdf,
+  FaCloudUploadAlt,
+  FaTrashAlt,
+  FaEye
 } from "react-icons/fa";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -15,6 +19,8 @@ import * as XLSX from "xlsx";
 import { useOutletContext } from "react-router-dom";
 import { StyleSheetManager } from "styled-components";
 import isPropValid from "@emotion/is-prop-valid";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 // Opciones predefinidas
 const sedes = [
@@ -101,6 +107,137 @@ const HojaDeVidaMantenimiento = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUploadFicha = async (e, row) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+        toast.error("Solo se permiten archivos PDF.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("ficha", file);
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/inventario/${row.codigo_activo}/ficha-tecnica`, {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al subir");
+      
+      toast.success("Ficha técnica subida correctamente");
+      fetchInventario(); // Recargar datos para mostrar el nuevo archivo
+    } catch (err) {
+      toast.error(`Error al subir ficha: ${err.message}`);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleDeleteFicha = async (row, fileUrl) => {
+    if (!window.confirm("¿Estás seguro de eliminar esta ficha técnica?")) return;
+
+    setLoading(true);
+    try {
+        const res = await fetch(`${apiBaseUrl}/inventario/${row.codigo_activo}/ficha-tecnica`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fileUrl })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Error al eliminar");
+
+        toast.success("Ficha técnica eliminada");
+        fetchInventario();
+    } catch (err) {
+        toast.error(`Error al eliminar ficha: ${err.message}`);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const generatePDF = (row) => {
+    const doc = new jsPDF();
+    const logoUrl = "https://i.imgur.com/YOUR_LOGO.png"; // Reemplazar con logo real si existe
+
+    // Encabezado
+    doc.setFillColor(33, 13, 101); // Color primario
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.text("HOJA DE VIDA DEL EQUIPO", 105, 25, { align: "center" });
+
+    // Información General
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.text(`Fecha de Generación: ${new Date().toLocaleDateString()}`, 14, 48);
+
+    const tableData = [
+        [{ content: 'IDENTIFICACIÓN DEL EQUIPO', colSpan: 2, styles: { fillColor: [200, 200, 200], fontStyle: 'bold', halign: 'center' } }],
+        ['Código Interno', row.codigo_activo],
+        ['Nombre del Activo', row.nombre_activo],
+        ['Tipo', row.tipo_activo],
+        ['Sede', row.sede],
+        ['Ubicación', row.clasificacion_ubicacion || 'N/A'],
+        ['Marca', row.marca || 'N/A'],
+        ['Modelo', row.modelo_referencia || 'N/A'],
+        ['Serial', row.serial || 'N/A'],
+        ['Estado', row.estado_activo],
+        
+        [{ content: 'ESPECIFICACIONES TÉCNICAS', colSpan: 2, styles: { fillColor: [200, 200, 200], fontStyle: 'bold', halign: 'center' } }],
+        ['Potencia', row.potencia || 'N/A'],
+        ['Tensión / Fase', row.tension_fase || 'N/A'],
+        ['Capacidad', row.capacidad || 'N/A'],
+        ['Material Principal', row.material_principal || 'N/A'],
+        ['Protecciones', row.protecciones_seguridad || 'N/A'],
+
+        [{ content: 'COMPRA Y GARANTÍA', colSpan: 2, styles: { fillColor: [200, 200, 200], fontStyle: 'bold', halign: 'center' } }],
+        ['Fecha Compra', row.fecha_compra || 'N/A'],
+        ['Proveedor', row.proveedor || 'N/A'],
+        ['Garantía Hasta', row.garantia_hasta || 'N/A'],
+        ['Costo', row.costo_compra ? `$ ${row.costo_compra}` : 'N/A'],
+        ['Responsable', row.responsable_gestion || 'N/A'],
+
+        [{ content: 'MANTENIMIENTO', colSpan: 2, styles: { fillColor: [200, 200, 200], fontStyle: 'bold', halign: 'center' } }],
+        ['Frecuencia', row.frecuencia_mantenimiento || 'N/A'],
+        ['Último Mantenimiento', row.ultimo_mantenimiento || 'N/A'],
+        ['Próximo Mantenimiento', row.proximo_mantenimiento || 'N/A'],
+        
+        [{ content: 'RIESGOS Y EPP', colSpan: 2, styles: { fillColor: [200, 200, 200], fontStyle: 'bold', halign: 'center' } }],
+        ['EPP Mínimo', row.epp_minimo || 'N/A'],
+        ['Riesgos Críticos', row.riesgos_criticos || 'N/A'],
+        ['Limpieza Segura', row.limpieza_segura || 'N/A'],
+    ];
+
+    doc.autoTable({
+        startY: 55,
+        head: [['Campo', 'Detalle']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [33, 13, 101], textColor: 255 },
+        styles: { fontSize: 10, cellPadding: 2 },
+        columnStyles: { 0: { fontStyle: 'bold', width: 60 } }
+    });
+
+    // Foto si existe
+    if (row.foto_activo) {
+        try {
+            // Nota: Para agregar imágenes en jsPDF, idealmente deben ser base64 o estar en el mismo dominio para evitar CORS.
+            // Aquí solo ponemos el link si no podemos renderizarla directamente sin proxy.
+            doc.addPage();
+            doc.text("Registro Fotográfico", 14, 20);
+            doc.textWithLink("Ver Foto Online", 14, 30, { url: row.foto_activo });
+        } catch (e) {
+            console.error("Error agregando imagen al PDF", e);
+        }
+    }
+
+    doc.save(`HojaVida_${row.codigo_activo}.pdf`);
   };
 
   const filteredItems = useMemo(() => {
@@ -271,7 +408,7 @@ const HojaDeVidaMantenimiento = () => {
       selector: (row) => row.codigo_activo,
       sortable: true,
       wrap: true,
-      minWidth: "120px",
+      minWidth: "100px",
     },
     {
       name: "Nombre",
@@ -281,13 +418,6 @@ const HojaDeVidaMantenimiento = () => {
       minWidth: "150px",
     },
     {
-      name: "Tipo",
-      selector: (row) => row.tipo_activo,
-      sortable: true,
-      wrap: true,
-      minWidth: "100px",
-    },
-    {
       name: "Sede",
       selector: (row) => row.sede,
       sortable: true,
@@ -295,38 +425,77 @@ const HojaDeVidaMantenimiento = () => {
       minWidth: "120px",
     },
     {
-      name: "Ubicación",
-      selector: (row) => row.clasificacion_ubicacion,
-      sortable: true,
-      wrap: true,
-      minWidth: "150px",
+      name: "Hoja de Vida",
+      cell: (row) => (
+        <button 
+            onClick={() => generatePDF(row)} 
+            className="btn-action-pdf"
+            style={{
+                backgroundColor: '#d32f2f', 
+                color: 'white', 
+                border: 'none', 
+                padding: '5px 10px', 
+                borderRadius: '4px', 
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+            }}
+        >
+          <FaFilePdf /> Descargar PDF
+        </button>
+      ),
+      ignoreRowClick: true,
+      allowOverflow: true,
+      button: true,
+      minWidth: "160px"
     },
     {
-      name: "Estado",
-      selector: (row) => row.estado_activo,
-      sortable: true,
-      minWidth: "100px",
-    },
-    {
-      name: "Frecuencia Mant.",
-      selector: (row) => row.frecuencia_mantenimiento,
-      sortable: true,
-      wrap: true,
-      minWidth: "150px",
-    },
-    {
-      name: "Responsable",
-      selector: (row) => row.responsable_gestion,
-      sortable: true,
-      wrap: true,
-      minWidth: "150px",
-    },
-    {
-      name: "Fecha Creación",
-      selector: (row) => new Date(row.created_at).toLocaleDateString(),
-      sortable: true,
-      minWidth: "120px",
-    },
+      name: "Ficha Técnica",
+      cell: (row) => {
+        // Parsear fichas si vienen como string o asegurar array
+        let fichas = [];
+        try {
+            fichas = typeof row.fichas_tecnicas === 'string' ? JSON.parse(row.fichas_tecnicas) : row.fichas_tecnicas;
+        } catch(e) {}
+        if (!Array.isArray(fichas)) fichas = [];
+
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '5px 0' }}>
+                {fichas.map((file, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem' }}>
+                        <a href={file.url} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'none', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={file.name}>
+                            <FaEye /> {file.name}
+                        </a>
+                        <FaTrashAlt 
+                            style={{ color: '#d32f2f', cursor: 'pointer' }} 
+                            onClick={() => handleDeleteFicha(row, file.url)}
+                            title="Eliminar ficha"
+                        />
+                    </div>
+                ))}
+                <label style={{ 
+                    cursor: 'pointer', 
+                    color: '#388e3c', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '5px', 
+                    fontWeight: 'bold',
+                    marginTop: '5px'
+                }}>
+                    <FaCloudUploadAlt size={16} /> Adjuntar PDF
+                    <input 
+                        type="file" 
+                        accept="application/pdf" 
+                        style={{ display: 'none' }} 
+                        onChange={(e) => handleUploadFicha(e, row)} 
+                    />
+                </label>
+            </div>
+        );
+      },
+      minWidth: "250px"
+    }
   ];
 
   const customStyles = {

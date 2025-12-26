@@ -11,7 +11,14 @@ import {
   FaBoxOpen,
   FaChevronDown,
   FaChevronUp,
+  FaChevronLeft,
+  FaChevronRight,
   FaSave,
+  FaTools,
+  FaHistory,
+  FaShieldAlt,
+  FaShoppingCart,
+  FaIdCard,
 } from "react-icons/fa";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -42,11 +49,37 @@ const frecuenciasMantenimiento = [
   "N/A",
 ];
 
+// Componente de Sección del Acordeón (Extraído para evitar re-renders)
+const AccordionSection = ({ id, title, icon: Icon, children, activeSection, toggleSection }) => (
+  <div className={`inv-accordion-item ${activeSection === id ? "active" : ""}`}>
+    <div className="inv-accordion-header" onClick={() => toggleSection(id)}>
+      <h3 className="inv-accordion-title">
+        {Icon && <Icon className="inv-section-icon" />}
+        {title}
+      </h3>
+      <span className="inv-accordion-icon">
+        {activeSection === id ? <FaChevronUp /> : <FaChevronDown />}
+      </span>
+    </div>
+    {activeSection === id && <div className="inv-accordion-body">{children}</div>}
+  </div>
+);
+
 const InventarioMantenimiento = () => {
   const { setLoading, loading } = useOutletContext();
   
+  // Secciones en orden para el Step Indicator
+  const sections = [
+    { id: "identificacion", title: "Identificación", icon: FaIdCard },
+    { id: "tecnicas", title: "Técnicas", icon: FaTools },
+    { id: "compra", title: "Compra", icon: FaShoppingCart },
+    { id: "mantenimiento", title: "Mantenimiento", icon: FaHistory },
+    { id: "riesgos", title: "Riesgos", icon: FaShieldAlt },
+  ];
+
   // Estado para el acordeón
   const [activeSection, setActiveSection] = useState("identificacion");
+  const currentStepIndex = sections.findIndex(s => s.id === activeSection);
 
   const [formData, setFormData] = useState({
     // Identificación
@@ -122,6 +155,8 @@ const InventarioMantenimiento = () => {
     if (!formData.ultimo_mantenimiento || !formData.frecuencia_preventivo) return;
 
     const lastDate = new Date(formData.ultimo_mantenimiento);
+    if (isNaN(lastDate.getTime())) return; // Validar fecha
+
     let nextDate = new Date(lastDate);
 
     switch (formData.frecuencia_preventivo) {
@@ -226,38 +261,48 @@ const InventarioMantenimiento = () => {
     }
   };
 
-  // Componente de Sección del Acordeón
-  const AccordionSection = ({ id, title, children }) => (
-    <div className={`inv-accordion-item ${activeSection === id ? "active" : ""}`}>
-      <div className="inv-accordion-header" onClick={() => toggleSection(id)}>
-        <h3 className="inv-accordion-title">{title}</h3>
-        <span className="inv-accordion-icon">
-          {activeSection === id ? <FaChevronUp /> : <FaChevronDown />}
-        </span>
-      </div>
-      {activeSection === id && <div className="inv-accordion-body">{children}</div>}
-    </div>
-  );
-
   return (
     <div className="inv-page-container">
       <div className="inv-title-section">
         <h2 className="inv-main-title">
-          <FaBoxOpen /> Gestión de Inventario de Mantenimiento
+          <FaBoxOpen /> Gestión de Inventario
         </h2>
         <p className="inv-subtitle">
-          "Registra y gestiona la información detallada de tus activos."
+          Completa los pasos para registrar un nuevo activo en el sistema.
         </p>
+      </div>
+
+      {/* Step Indicator */}
+      <div className="inv-steps-container">
+        {sections.map((section, index) => (
+          <div 
+            key={section.id} 
+            className={`inv-step-item ${activeSection === section.id ? "active" : ""} ${index < currentStepIndex ? "completed" : ""}`}
+            onClick={() => setActiveSection(section.id)}
+            style={{ cursor: 'pointer' }}
+          >
+            <div className="inv-step-circle">
+              {index < currentStepIndex ? "✓" : index + 1}
+            </div>
+            <span className="inv-step-label">{section.title}</span>
+          </div>
+        ))}
       </div>
 
       <form onSubmit={handleSubmit} className="inv-accordion-wrapper">
         
         {/* 1. Identificación del equipo */}
-        <AccordionSection id="identificacion" title="1. Identificación del Equipo">
+        <AccordionSection 
+          id="identificacion" 
+          title="1. Identificación del Equipo" 
+          icon={FaIdCard}
+          activeSection={activeSection} 
+          toggleSection={toggleSection}
+        >
           <div className="inv-form-grid">
             <div className="inv-form-group">
               <label className="inv-label">Nombre del Activo</label>
-              <input type="text" name="nombre_activo" value={formData.nombre_activo} onChange={handleChange} required className="inv-input" />
+              <input type="text" name="nombre_activo" value={formData.nombre_activo} onChange={handleChange} required className="inv-input" placeholder="Ej. Molino de Carne" />
             </div>
             <div className="inv-form-group">
               <label className="inv-label">Tipo del Activo</label>
@@ -265,7 +310,7 @@ const InventarioMantenimiento = () => {
                 <option value="" disabled>Selecciona un tipo</option>
                 {tiposActivosDisponibles.map((tipo) => (
                   <option key={tipo.codigo_tipo} value={tipo.nombre_tipo}>
-                    {tipo.nombre_tipo} - {tipo.descripcion || ""}
+                    {tipo.nombre_tipo}
                   </option>
                 ))}
               </select>
@@ -283,15 +328,15 @@ const InventarioMantenimiento = () => {
             </div>
             <div className="inv-form-group">
               <label className="inv-label">Marca</label>
-              <input type="text" name="marca" value={formData.marca} onChange={handleChange} className="inv-input" />
+              <input type="text" name="marca" value={formData.marca} onChange={handleChange} className="inv-input" placeholder="Ej. Hobart" />
             </div>
             <div className="inv-form-group">
               <label className="inv-label">Modelo / Referencia</label>
-              <input type="text" name="modelo_referencia" value={formData.modelo_referencia} onChange={handleChange} className="inv-input" />
+              <input type="text" name="modelo_referencia" value={formData.modelo_referencia} onChange={handleChange} className="inv-input" placeholder="Ej. 4146" />
             </div>
             <div className="inv-form-group">
               <label className="inv-label">Serial</label>
-              <input type="text" name="serial" value={formData.serial} onChange={handleChange} className="inv-input" />
+              <input type="text" name="serial" value={formData.serial} onChange={handleChange} className="inv-input" placeholder="N° de serie" />
             </div>
             <div className="inv-form-group">
               <label className="inv-label">Estado del Activo</label>
@@ -309,25 +354,48 @@ const InventarioMantenimiento = () => {
               <input type="text" value="Generado Automáticamente" disabled className="inv-input disabled" />
             </div>
           </div>
-          <button type="button" className="inv-btn-next" onClick={() => setActiveSection("tecnicas")}>Siguiente</button>
+          <div className="inv-navigation-buttons">
+            <button type="button" className="inv-btn-next" onClick={() => setActiveSection("tecnicas")}>
+              Siguiente <FaChevronRight />
+            </button>
+          </div>
         </AccordionSection>
 
         {/* 2. Especificaciones Técnicas */}
-        <AccordionSection id="tecnicas" title="2. Especificaciones Técnicas">
+        <AccordionSection 
+          id="tecnicas" 
+          title="2. Especificaciones Técnicas" 
+          icon={FaTools}
+          activeSection={activeSection} 
+          toggleSection={toggleSection}
+        >
           <div className="inv-form-grid">
-            <div className="inv-form-group"><label className="inv-label">Potencia (kW/HP)</label><input type="text" name="potencia" value={formData.potencia} onChange={handleChange} className="inv-input" /></div>
-            <div className="inv-form-group"><label className="inv-label">Tensión (V) / Fase</label><input type="text" name="tension_fase" value={formData.tension_fase} onChange={handleChange} className="inv-input" /></div>
-            <div className="inv-form-group"><label className="inv-label">Capacidad (kg/h)</label><input type="text" name="capacidad" value={formData.capacidad} onChange={handleChange} className="inv-input" /></div>
+            <div className="inv-form-group"><label className="inv-label">Potencia (kW/HP)</label><input type="text" name="potencia" value={formData.potencia} onChange={handleChange} className="inv-input" placeholder="Ej. 5 HP" /></div>
+            <div className="inv-form-group"><label className="inv-label">Tensión (V) / Fase</label><input type="text" name="tension_fase" value={formData.tension_fase} onChange={handleChange} className="inv-input" placeholder="Ej. 220V / Trifásico" /></div>
+            <div className="inv-form-group"><label className="inv-label">Capacidad (kg/h)</label><input type="text" name="capacidad" value={formData.capacidad} onChange={handleChange} className="inv-input" placeholder="Ej. 500 kg/h" /></div>
             <div className="inv-form-group"><label className="inv-label">Diámetro de placa (mm)</label><input type="text" name="diametro_placa" value={formData.diametro_placa} onChange={handleChange} className="inv-input" /></div>
             <div className="inv-form-group"><label className="inv-label">Placas disponibles (mm)</label><input type="text" name="placas_disponibles" value={formData.placas_disponibles} onChange={handleChange} className="inv-input" /></div>
-            <div className="inv-form-group"><label className="inv-label">Material principal</label><input type="text" name="material_principal" value={formData.material_principal} onChange={handleChange} className="inv-input" /></div>
-            <div className="inv-form-group"><label className="inv-label">Protecciones / Seguridad</label><input type="text" name="protecciones_seguridad" value={formData.protecciones_seguridad} onChange={handleChange} className="inv-input" /></div>
+            <div className="inv-form-group"><label className="inv-label">Material principal</label><input type="text" name="material_principal" value={formData.material_principal} onChange={handleChange} className="inv-input" placeholder="Ej. Acero Inoxidable" /></div>
+            <div className="inv-form-group"><label className="inv-label">Protecciones / Seguridad</label><input type="text" name="protecciones_seguridad" value={formData.protecciones_seguridad} onChange={handleChange} className="inv-input" placeholder="Ej. Parada de emergencia" /></div>
           </div>
-          <button type="button" className="inv-btn-next" onClick={() => setActiveSection("compra")}>Siguiente</button>
+          <div className="inv-navigation-buttons">
+            <button type="button" className="inv-btn-prev" onClick={() => setActiveSection("identificacion")}>
+              <FaChevronLeft /> Anterior
+            </button>
+            <button type="button" className="inv-btn-next" onClick={() => setActiveSection("compra")}>
+              Siguiente <FaChevronRight />
+            </button>
+          </div>
         </AccordionSection>
 
         {/* 3. Compra, Garantía y Administración */}
-        <AccordionSection id="compra" title="3. Compra, Garantía y Administración">
+        <AccordionSection 
+          id="compra" 
+          title="3. Compra, Garantía y Administración" 
+          icon={FaShoppingCart}
+          activeSection={activeSection} 
+          toggleSection={toggleSection}
+        >
           <div className="inv-form-grid">
             <div className="inv-form-group"><label className="inv-label">Fecha de Compra</label><input type="date" name="fecha_compra" value={formData.fecha_compra} onChange={handleChange} className="inv-input" /></div>
             <div className="inv-form-group"><label className="inv-label">Proveedor</label><input type="text" name="proveedor" value={formData.proveedor} onChange={handleChange} className="inv-input" /></div>
@@ -337,11 +405,24 @@ const InventarioMantenimiento = () => {
             <div className="inv-form-group"><label className="inv-label">Contacto Responsable</label><input type="text" name="contacto_responsable" value={formData.contacto_responsable} onChange={handleChange} className="inv-input" /></div>
             <div className="inv-form-group"><label className="inv-label">Código/URL QR (SOP/Registro)</label><input type="text" name="codigo_qr" value={formData.codigo_qr} onChange={handleChange} className="inv-input" /></div>
           </div>
-          <button type="button" className="inv-btn-next" onClick={() => setActiveSection("mantenimiento")}>Siguiente</button>
+          <div className="inv-navigation-buttons">
+            <button type="button" className="inv-btn-prev" onClick={() => setActiveSection("tecnicas")}>
+              <FaChevronLeft /> Anterior
+            </button>
+            <button type="button" className="inv-btn-next" onClick={() => setActiveSection("mantenimiento")}>
+              Siguiente <FaChevronRight />
+            </button>
+          </div>
         </AccordionSection>
 
         {/* 4. Mantenimiento Planificado */}
-        <AccordionSection id="mantenimiento" title="4. Mantenimiento Planificado">
+        <AccordionSection 
+          id="mantenimiento" 
+          title="4. Mantenimiento Planificado" 
+          icon={FaHistory}
+          activeSection={activeSection} 
+          toggleSection={toggleSection}
+        >
           <div className="inv-form-grid">
             <div className="inv-form-group">
               <label className="inv-label">Frecuencia Preventivo</label>
@@ -359,28 +440,46 @@ const InventarioMantenimiento = () => {
               <input type="date" name="proximo_mantenimiento" value={formData.proximo_mantenimiento} readOnly className="inv-input disabled" />
             </div>
           </div>
-          <button type="button" className="inv-btn-next" onClick={() => setActiveSection("riesgos")}>Siguiente</button>
+          <div className="inv-navigation-buttons">
+            <button type="button" className="inv-btn-prev" onClick={() => setActiveSection("compra")}>
+              <FaChevronLeft /> Anterior
+            </button>
+            <button type="button" className="inv-btn-next" onClick={() => setActiveSection("riesgos")}>
+              Siguiente <FaChevronRight />
+            </button>
+          </div>
         </AccordionSection>
 
         {/* 5. Riesgos Críticos y EPP */}
-        <AccordionSection id="riesgos" title="5. Riesgos Críticos y EPP">
+        <AccordionSection 
+          id="riesgos" 
+          title="5. Riesgos Críticos y EPP" 
+          icon={FaShieldAlt}
+          activeSection={activeSection} 
+          toggleSection={toggleSection}
+        >
           <div className="inv-form-grid">
             <div className="inv-form-group full-width">
               <label className="inv-label">EPP Mínimo</label>
-              <textarea name="epp_minimo" value={formData.epp_minimo} onChange={handleChange} className="inv-textarea" rows="2"></textarea>
+              <textarea name="epp_minimo" value={formData.epp_minimo} onChange={handleChange} className="inv-textarea" rows="2" placeholder="Ej. Guantes de acero, gafas de seguridad..."></textarea>
             </div>
             <div className="inv-form-group full-width">
               <label className="inv-label">Riesgos Críticos</label>
-              <textarea name="riesgos_criticos" value={formData.riesgos_criticos} onChange={handleChange} className="inv-textarea" rows="2"></textarea>
+              <textarea name="riesgos_criticos" value={formData.riesgos_criticos} onChange={handleChange} className="inv-textarea" rows="2" placeholder="Ej. Atrapamiento, cortes..."></textarea>
             </div>
             <div className="inv-form-group full-width">
               <label className="inv-label">Limpieza Segura (Resumen)</label>
-              <textarea name="limpieza_segura" value={formData.limpieza_segura} onChange={handleChange} className="inv-textarea" rows="2"></textarea>
+              <textarea name="limpieza_segura" value={formData.limpieza_segura} onChange={handleChange} className="inv-textarea" rows="2" placeholder="Ej. Desconectar antes de limpiar..."></textarea>
             </div>
             <div className="inv-form-group full-width">
               <label className="inv-label">Adjuntar Documento</label>
               <input type="file" name="documento_riesgos" onChange={handleChange} className="inv-input" />
             </div>
+          </div>
+          <div className="inv-navigation-buttons">
+            <button type="button" className="inv-btn-prev" onClick={() => setActiveSection("mantenimiento")}>
+              <FaChevronLeft /> Anterior
+            </button>
           </div>
           <div className="inv-action-buttons">
              <button type="submit" className="inv-btn-submit" disabled={loading}>

@@ -11,6 +11,8 @@ import {
   eliminarInventario,
   cargarExcelInventario,
   obtenerTiposDeActivos,
+  subirFichaTecnica,
+  eliminarFichaTecnica,
 } from "../controllers/inventarioMantenimientoController.js";
 
 import {
@@ -83,5 +85,9 @@ router.post(
   upload.single("excelFile"),
   cargarExcelInventario
 );
+
+// Rutas para Fichas Técnicas
+router.post("/inventario/:id/ficha-tecnica", upload.single("ficha"), subirFichaTecnica);
+router.delete("/inventario/:id/ficha-tecnica", eliminarFichaTecnica);
 
 export default router;

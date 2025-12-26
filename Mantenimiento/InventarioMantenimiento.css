@@ -10,45 +10,123 @@
   --inv-color-bg-light: #f4f7f9;
   --inv-color-card-bg: #ffffff;
   --inv-border-color: #e0e0e0;
-  --inv-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --inv-radius: 12px;
-  --inv-transition: 0.3s ease;
+  --inv-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  --inv-radius: 16px;
+  --inv-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .inv-page-container {
-  padding: 20px;
-  max-width: 1200px;
+  padding: 40px 20px;
+  max-width: 1000px;
   margin: 0 auto;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
   color: var(--inv-color-text-dark);
+  background-color: var(--inv-color-bg-light);
+  min-height: 100vh;
+}
+
+/* --- Step Indicator --- */
+.inv-steps-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 40px;
+  position: relative;
+  padding: 0 10px;
+}
+
+.inv-steps-container::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #e0e0e0;
+  z-index: 1;
+}
+
+.inv-step-item {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.inv-step-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #999;
+  transition: var(--inv-transition);
+}
+
+.inv-step-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #999;
+  text-align: center;
+  max-width: 80px;
+  transition: var(--inv-transition);
+}
+
+.inv-step-item.active .inv-step-circle {
+  background: var(--inv-color-primary);
+  border-color: var(--inv-color-primary);
+  color: white;
+  box-shadow: 0 0 0 5px rgba(33, 13, 101, 0.1);
+}
+
+.inv-step-item.active .inv-step-label {
+  color: var(--inv-color-primary);
+}
+
+.inv-step-item.completed .inv-step-circle {
+  background: var(--inv-color-accent);
+  border-color: var(--inv-color-accent);
+  color: white;
+}
+
+.inv-step-item.completed .inv-step-label {
+  color: var(--inv-color-accent);
 }
 
 .inv-title-section {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 40px;
 }
 
 .inv-main-title {
-  font-size: 2rem;
+  font-size: 2.2rem;
+  font-weight: 800;
   color: var(--inv-color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 15px;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
 }
 
 .inv-subtitle {
   color: #666;
-  font-style: italic;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  font-weight: 400;
 }
 
 /* --- Acordeón --- */
 .inv-accordion-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 20px;
 }
 
 .inv-accordion-item {
@@ -56,70 +134,83 @@
   border-radius: var(--inv-radius);
   box-shadow: var(--inv-shadow);
   overflow: hidden;
-  border: 1px solid transparent;
+  border: 1px solid rgba(0,0,0,0.05);
   transition: var(--inv-transition);
 }
 
 .inv-accordion-item.active {
-  border-color: var(--inv-color-secondary);
+  border-color: transparent;
+  box-shadow: 0 15px 35px rgba(33, 13, 101, 0.08);
 }
 
 .inv-accordion-header {
-  background: linear-gradient(to right, #f8f9fa, #ffffff);
-  padding: 15px 20px;
+  background: white;
+  padding: 20px 25px;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: background 0.2s;
-  border-bottom: 1px solid transparent;
+  transition: var(--inv-transition);
 }
 
 .inv-accordion-header:hover {
-  background: #f0f2f5;
+  background: #fafafa;
 }
 
 .inv-accordion-item.active .inv-accordion-header {
   background: var(--inv-color-primary);
-  color: var(--inv-color-text-light);
-  border-bottom: 1px solid var(--inv-border-color);
+  color: white;
 }
 
 .inv-accordion-title {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1.15rem;
+  font-weight: 700;
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+}
+
+.inv-section-icon {
+  font-size: 1.2rem;
+  color: var(--inv-color-secondary);
+  background: rgba(59, 26, 154, 0.1);
+  padding: 8px;
+  border-radius: 8px;
+  transition: var(--inv-transition);
+}
+
+.inv-accordion-item.active .inv-section-icon {
+  color: white;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .inv-accordion-icon {
-  font-size: 0.9rem;
+  font-size: 1rem;
+  opacity: 0.7;
 }
 
 .inv-accordion-body {
-  padding: 25px;
+  padding: 30px;
   background: #fff;
-  animation: slideDown 0.3s ease-out;
+  border-top: 1px solid #f0f0f0;
 }
 
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+.inv-accordion-item.active .inv-accordion-body {
+  border-top: none;
 }
 
 /* --- Grid del Formulario --- */
 .inv-form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 25px;
 }
 
 .inv-form-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .inv-form-group.full-width {
@@ -127,20 +218,29 @@
 }
 
 .inv-label {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--inv-color-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .inv-input,
 .inv-select,
 .inv-textarea {
-  padding: 10px 12px;
-  border: 1px solid var(--inv-border-color);
-  border-radius: 6px;
-  font-size: 0.95rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  background-color: #fff;
+  padding: 12px 16px;
+  border: 2px solid #edf2f7;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: var(--inv-transition);
+  background-color: #f8fafc;
+  color: #2d3748;
+}
+
+.inv-input:hover,
+.inv-select:hover,
+.inv-textarea:hover {
+  border-color: #cbd5e0;
 }
 
 .inv-input:focus,
@@ -148,89 +248,134 @@
 .inv-textarea:focus {
   outline: none;
   border-color: var(--inv-color-secondary);
-  box-shadow: 0 0 0 3px rgba(59, 26, 154, 0.1);
+  background-color: #fff;
+  box-shadow: 0 0 0 4px rgba(59, 26, 154, 0.1);
 }
 
 .inv-input.disabled {
-  background-color: #e9ecef;
-  color: #6c757d;
+  background-color: #f1f5f9;
+  color: #94a3b8;
+  border-color: #e2e8f0;
   cursor: not-allowed;
 }
 
 .inv-textarea {
   resize: vertical;
-  min-height: 80px;
+  min-height: 100px;
 }
 
 /* --- Botones --- */
+.inv-navigation-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 30px;
+  gap: 15px;
+}
+
+.inv-btn-prev {
+  padding: 12px 24px;
+  background-color: #fff;
+  color: var(--inv-color-primary);
+  border: 2px solid var(--inv-color-primary);
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: var(--inv-transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inv-btn-prev:hover {
+  background-color: var(--inv-color-primary);
+  color: white;
+}
+
 .inv-btn-next {
-  margin-top: 20px;
-  padding: 10px 24px;
+  padding: 12px 30px;
   background-color: var(--inv-color-secondary);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   cursor: pointer;
-  font-weight: 600;
-  float: right;
-  transition: background 0.2s;
+  font-weight: 700;
+  transition: var(--inv-transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .inv-btn-next:hover {
   background-color: var(--inv-color-primary);
+  transform: translateX(5px);
+}
+
+.inv-action-buttons {
+  margin-top: 30px;
 }
 
 .inv-btn-submit {
-  background-color: var(--inv-color-accent);
+  background: linear-gradient(135deg, var(--inv-color-accent), var(--inv-color-accent-hover));
   color: white;
-  padding: 12px 30px;
+  padding: 16px 30px;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: bold;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 800;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  margin-top: 20px;
-  transition: transform 0.1s, background 0.2s;
+  box-shadow: 0 10px 20px rgba(76, 175, 80, 0.2);
+  transition: var(--inv-transition);
 }
 
 .inv-btn-submit:hover {
-  background-color: var(--inv-color-accent-hover);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 15px 30px rgba(76, 175, 80, 0.3);
 }
 
-.inv-btn-submit:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-  transform: none;
+.inv-btn-submit:active {
+  transform: translateY(-1px);
 }
 
 /* --- Carga Masiva --- */
 .inv-upload-card {
-  background: var(--inv-color-card-bg);
+  background: white;
   border-radius: var(--inv-radius);
   box-shadow: var(--inv-shadow);
-  padding: 25px;
-  margin-top: 40px;
-  border-top: 4px solid var(--inv-color-accent);
+  padding: 35px;
+  margin-top: 50px;
+  border: 1px dashed var(--inv-color-accent);
+  text-align: center;
 }
 
 .inv-upload-title {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
+  font-weight: 800;
   color: var(--inv-color-text-dark);
-  margin-bottom: 15px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  margin-bottom: 10px;
+  justify-content: center;
 }
 
-.inv-file-info {
-  margin-top: 10px;
-  font-size: 0.9rem;
-  color: var(--inv-color-accent);
-  font-weight: 500;
+.inv-upload-card p {
+  color: #718096;
+  margin-bottom: 25px;
+}
+
+@media (max-width: 768px) {
+  .inv-steps-container {
+    display: none;
+  }
+  
+  .inv-main-title {
+    font-size: 1.6rem;
+  }
+  
+  .inv-accordion-body {
+    padding: 20px;
+  }
 }
