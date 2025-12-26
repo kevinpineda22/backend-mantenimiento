@@ -20,7 +20,27 @@ import { useOutletContext } from "react-router-dom";
 import { StyleSheetManager } from "styled-components";
 import isPropValid from "@emotion/is-prop-valid";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
+import FilePreviewModal from "../trazabilidad_contabilidad/FilePreviewModal";
+
+// Función para convertir URL a Base64 para el PDF
+const getBase64ImageFromURL = (url) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.setAttribute("crossOrigin", "anonymous");
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      const dataURL = canvas.toDataURL("image/png");
+      resolve(dataURL);
+    };
+    img.onerror = (error) => reject(error);
+    img.src = url;
+  });
+};
 
 // Opciones predefinidas
 const sedes = [
@@ -64,6 +84,10 @@ const HojaDeVidaMantenimiento = () => {
   const [selectedUbicacion, setSelectedUbicacion] = useState("");
   const [selectedEstado, setSelectedEstado] = useState("");
   const [tiposActivosDisponibles, setTiposActivosDisponibles] = useState([]);
+  
+  // Estado para el modal de previsualización
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const apiBaseUrl = "https://backend-mantenimiento.vercel.app/api";
 
@@ -161,83 +185,122 @@ const HojaDeVidaMantenimiento = () => {
     }
   };
 
-  const generatePDF = (row) => {
-    const doc = new jsPDF();
-    const logoUrl = "https://i.imgur.com/YOUR_LOGO.png"; // Reemplazar con logo real si existe
-
-    // Encabezado
-    doc.setFillColor(33, 13, 101); // Color primario
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.text("HOJA DE VIDA DEL EQUIPO", 105, 25, { align: "center" });
-
-    // Información General
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(12);
-    doc.text(`Fecha de Generación: ${new Date().toLocaleDateString()}`, 14, 48);
-
-    const tableData = [
-        [{ content: 'IDENTIFICACIÓN DEL EQUIPO', colSpan: 2, styles: { fillColor: [200, 200, 200], fontStyle: 'bold', halign: 'center' } }],
-        ['Código Interno', row.codigo_activo],
-        ['Nombre del Activo', row.nombre_activo],
-        ['Tipo', row.tipo_activo],
-        ['Sede', row.sede],
-        ['Ubicación', row.clasificacion_ubicacion || 'N/A'],
-        ['Marca', row.marca || 'N/A'],
-        ['Modelo', row.modelo_referencia || 'N/A'],
-        ['Serial', row.serial || 'N/A'],
-        ['Estado', row.estado_activo],
-        
-        [{ content: 'ESPECIFICACIONES TÉCNICAS', colSpan: 2, styles: { fillColor: [200, 200, 200], fontStyle: 'bold', halign: 'center' } }],
-        ['Potencia', row.potencia || 'N/A'],
-        ['Tensión / Fase', row.tension_fase || 'N/A'],
-        ['Capacidad', row.capacidad || 'N/A'],
-        ['Material Principal', row.material_principal || 'N/A'],
-        ['Protecciones', row.protecciones_seguridad || 'N/A'],
-
-        [{ content: 'COMPRA Y GARANTÍA', colSpan: 2, styles: { fillColor: [200, 200, 200], fontStyle: 'bold', halign: 'center' } }],
-        ['Fecha Compra', row.fecha_compra || 'N/A'],
-        ['Proveedor', row.proveedor || 'N/A'],
-        ['Garantía Hasta', row.garantia_hasta || 'N/A'],
-        ['Costo', row.costo_compra ? `$ ${row.costo_compra}` : 'N/A'],
-        ['Responsable', row.responsable_gestion || 'N/A'],
-
-        [{ content: 'MANTENIMIENTO', colSpan: 2, styles: { fillColor: [200, 200, 200], fontStyle: 'bold', halign: 'center' } }],
-        ['Frecuencia', row.frecuencia_mantenimiento || 'N/A'],
-        ['Último Mantenimiento', row.ultimo_mantenimiento || 'N/A'],
-        ['Próximo Mantenimiento', row.proximo_mantenimiento || 'N/A'],
-        
-        [{ content: 'RIESGOS Y EPP', colSpan: 2, styles: { fillColor: [200, 200, 200], fontStyle: 'bold', halign: 'center' } }],
-        ['EPP Mínimo', row.epp_minimo || 'N/A'],
-        ['Riesgos Críticos', row.riesgos_criticos || 'N/A'],
-        ['Limpieza Segura', row.limpieza_segura || 'N/A'],
-    ];
-
-    doc.autoTable({
-        startY: 55,
-        head: [['Campo', 'Detalle']],
-        body: tableData,
-        theme: 'grid',
-        headStyles: { fillColor: [33, 13, 101], textColor: 255 },
-        styles: { fontSize: 10, cellPadding: 2 },
-        columnStyles: { 0: { fontStyle: 'bold', width: 60 } }
-    });
-
-    // Foto si existe
-    if (row.foto_activo) {
+  const generatePDF = async (row) => {
+    setLoading(true);
+    try {
+      const doc = new jsPDF();
+      
+      // Intentar obtener la imagen antes de armar la tabla
+      let imgData = null;
+      if (row.foto_activo) {
         try {
-            // Nota: Para agregar imágenes en jsPDF, idealmente deben ser base64 o estar en el mismo dominio para evitar CORS.
-            // Aquí solo ponemos el link si no podemos renderizarla directamente sin proxy.
-            doc.addPage();
-            doc.text("Registro Fotográfico", 14, 20);
-            doc.textWithLink("Ver Foto Online", 14, 30, { url: row.foto_activo });
+          imgData = await getBase64ImageFromURL(row.foto_activo);
         } catch (e) {
-            console.error("Error agregando imagen al PDF", e);
+          console.error("Error cargando imagen para PDF:", e);
         }
-    }
+      }
 
-    doc.save(`HojaVida_${row.codigo_activo}.pdf`);
+      // Encabezado
+      doc.setFillColor(33, 13, 101); // Color primario
+      doc.rect(0, 0, 210, 40, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(22);
+      doc.text("HOJA DE VIDA DEL EQUIPO", 105, 25, { align: "center" });
+
+      // Información General
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(10);
+      doc.text(`Fecha de Generación: ${new Date().toLocaleDateString()}`, 14, 48);
+
+      const tableData = [
+          [{ content: '1. IDENTIFICACIÓN DEL EQUIPO', colSpan: 2, styles: { fillColor: [240, 240, 240], fontStyle: 'bold' } }],
+          ['Código Interno', row.codigo_activo],
+          ['Nombre del Activo', row.nombre_activo],
+          ['Tipo', row.tipo_activo],
+          ['Sede', row.sede],
+          ['Área / Ubicación', row.clasificacion_ubicacion || row.area_ubicacion || 'N/A'],
+          // Fila para la imagen si existe
+          ...(imgData ? [['Registro Fotográfico', { content: '', styles: { minCellHeight: 65 } }]] : []),
+          ['Marca', row.marca || 'N/A'],
+          ['Modelo', row.modelo_referencia || 'N/A'],
+          ['Serial', row.serial || 'N/A'],
+          ['Estado Actual', row.estado_activo],
+          
+          [{ content: '2. ESPECIFICACIONES TÉCNICAS', colSpan: 2, styles: { fillColor: [240, 240, 240], fontStyle: 'bold' } }],
+          ['Potencia', row.potencia || 'N/A'],
+          ['Tensión / Fase', row.tension_fase || 'N/A'],
+          ['Capacidad', row.capacidad || 'N/A'],
+          ['Material Principal', row.material_principal || 'N/A'],
+          ['Protecciones', row.protecciones_seguridad || 'N/A'],
+
+          [{ content: '3. COMPRA Y GESTIÓN', colSpan: 2, styles: { fillColor: [240, 240, 240], fontStyle: 'bold' } }],
+          ['Fecha Compra', row.fecha_compra || 'N/A'],
+          ['Proveedor', row.proveedor || 'N/A'],
+          ['Garantía Hasta', row.garantia_hasta || 'N/A'],
+          ['Costo', row.costo_compra ? `$ ${Number(row.costo_compra).toLocaleString()}` : 'N/A'],
+          ['Responsable', row.responsable_gestion || 'N/A'],
+
+          [{ content: '4. PLAN DE MANTENIMIENTO', colSpan: 2, styles: { fillColor: [240, 240, 240], fontStyle: 'bold' } }],
+          ['Frecuencia', row.frecuencia_mantenimiento || row.frecuencia_preventivo || 'N/A'],
+          ['Último Mantenimiento', row.ultimo_mantenimiento || 'N/A'],
+          ['Próximo Mantenimiento', row.proximo_mantenimiento || 'N/A'],
+          
+          [{ content: '5. SEGURIDAD Y RIESGOS', colSpan: 2, styles: { fillColor: [240, 240, 240], fontStyle: 'bold' } }],
+          ['EPP Mínimo', row.epp_minimo || 'N/A'],
+          ['Riesgos Críticos', row.riesgos_criticos || 'N/A'],
+          ['Limpieza Segura', row.limpieza_segura || 'N/A'],
+      ];
+
+      autoTable(doc, {
+          startY: 55,
+          body: tableData,
+          theme: 'grid',
+          styles: { fontSize: 9, cellPadding: 3, valign: 'middle' },
+          columnStyles: { 0: { fontStyle: 'bold', width: 60, fillColor: [250, 250, 250] } },
+          didDrawCell: (data) => {
+            if (imgData && data.column.index === 1 && data.row.raw[0] === 'Registro Fotográfico') {
+                const cellWidth = data.cell.width - data.cell.padding('left') - data.cell.padding('right');
+                const cellHeight = data.cell.height - data.cell.padding('top') - data.cell.padding('bottom');
+                
+                const imgProps = doc.getImageProperties(imgData);
+                const ratio = Math.min(cellWidth / imgProps.width, cellHeight / imgProps.height);
+                const imgW = imgProps.width * ratio;
+                const imgH = imgProps.height * ratio;
+                
+                const x = data.cell.x + data.cell.padding('left') + (cellWidth - imgW) / 2;
+                const y = data.cell.y + data.cell.padding('top') + (cellHeight - imgH) / 2;
+                
+                doc.addImage(imgData, 'PNG', x, y, imgW, imgH);
+            }
+          }
+      });
+
+      let finalY = doc.lastAutoTable.finalY + 10;
+
+      // Sección de Documentos y Enlaces
+      if (row.documento_riesgos) {
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.text("DOCUMENTACIÓN ADJUNTA", 14, finalY);
+          doc.setFont(undefined, 'normal');
+          doc.setFontSize(10);
+          finalY += 8;
+
+          doc.setTextColor(0, 102, 204);
+          doc.textWithLink("→ Ver Documento de Riesgos (Abrir en nueva pestaña)", 14, finalY, { url: row.documento_riesgos });
+          doc.setTextColor(0, 0, 0);
+          finalY += 10;
+      }
+
+      const pdfBlob = doc.output('bloburl');
+      setPreviewUrl(pdfBlob);
+      setIsPreviewOpen(true);
+    } catch (err) {
+      toast.error("Error al generar el PDF");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredItems = useMemo(() => {
@@ -247,33 +310,35 @@ const HojaDeVidaMantenimiento = () => {
           value &&
           value.toString().toLowerCase().includes(filterText.toLowerCase())
       );
-      const typeMatch = selectedTipo ? item.tipo_activo === selectedTipo : true;
       const sedeMatch = selectedSede ? item.sede === selectedSede : true;
-      const ubicacionMatch = selectedUbicacion
-        ? item.clasificacion_ubicacion === selectedUbicacion
-        : true;
       const estadoMatch = selectedEstado
         ? item.estado_activo === selectedEstado
         : true;
       return (
-        globalMatch && typeMatch && sedeMatch && ubicacionMatch && estadoMatch
+        globalMatch && sedeMatch && estadoMatch
       );
     });
   }, [
     inventario,
     filterText,
-    selectedTipo,
     selectedSede,
-    selectedUbicacion,
     selectedEstado,
   ]);
+
+  // Estadísticas rápidas
+  const stats = useMemo(() => {
+    return {
+      total: inventario.length,
+      activos: inventario.filter(i => i.estado_activo === "Activo").length,
+      reparacion: inventario.filter(i => i.estado_activo === "En Reparación").length,
+      baja: inventario.filter(i => i.estado_activo === "Dado de Baja").length,
+    };
+  }, [inventario]);
 
   const SubHeaderComponent = useMemo(() => {
     const handleClear = () => {
       setFilterText("");
-      setSelectedTipo("");
       setSelectedSede("");
-      setSelectedUbicacion("");
       setSelectedEstado("");
     };
 
@@ -326,23 +391,6 @@ const HojaDeVidaMantenimiento = () => {
           <div className="maint-filter-select-container">
             <FaFilter className="maint-filter-icon" />
             <select
-              value={selectedTipo}
-              onChange={(e) => setSelectedTipo(e.target.value)}
-              className="maint-table-filter-select"
-            >
-              {tiposActivosDisponibles.map((tipo) => (
-                <option
-                  key={tipo.codigo_tipo || "all"}
-                  value={tipo.nombre_tipo}
-                >
-                  {tipo.nombre_tipo || "Todos los Tipos"}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="maint-filter-select-container">
-            <FaFilter className="maint-filter-icon" />
-            <select
               value={selectedSede}
               onChange={(e) => setSelectedSede(e.target.value)}
               className="maint-table-filter-select"
@@ -350,20 +398,6 @@ const HojaDeVidaMantenimiento = () => {
               {sedes.map((sede) => (
                 <option key={sede || "all"} value={sede}>
                   {sede || "Todas las Sedes"}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="maint-filter-select-container">
-            <FaFilter className="maint-filter-icon" />
-            <select
-              value={selectedUbicacion}
-              onChange={(e) => setSelectedUbicacion(e.target.value)}
-              className="maint-table-filter-select"
-            >
-              {clasificacionesUbicacion.map((ubicacion) => (
-                <option key={ubicacion || "all"} value={ubicacion}>
-                  {ubicacion || "Todas las Ubicaciones"}
                 </option>
               ))}
             </select>
@@ -395,11 +429,8 @@ const HojaDeVidaMantenimiento = () => {
   }, [
     filterText,
     filteredItems,
-    selectedTipo,
     selectedSede,
-    selectedUbicacion,
     selectedEstado,
-    tiposActivosDisponibles,
   ]);
 
   const columnas = [
@@ -429,26 +460,15 @@ const HojaDeVidaMantenimiento = () => {
       cell: (row) => (
         <button 
             onClick={() => generatePDF(row)} 
-            className="btn-action-pdf"
-            style={{
-                backgroundColor: '#d32f2f', 
-                color: 'white', 
-                border: 'none', 
-                padding: '5px 10px', 
-                borderRadius: '4px', 
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px'
-            }}
+            className="maint-btn-view-pdf"
         >
-          <FaFilePdf /> Descargar PDF
+          <FaFilePdf /> Ver PDF
         </button>
       ),
       ignoreRowClick: true,
       allowOverflow: true,
       button: true,
-      minWidth: "160px"
+      minWidth: "140px"
     },
     {
       name: "Ficha Técnica",
@@ -461,29 +481,32 @@ const HojaDeVidaMantenimiento = () => {
         if (!Array.isArray(fichas)) fichas = [];
 
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '5px 0' }}>
-                {fichas.map((file, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem' }}>
-                        <a href={file.url} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'none', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={file.name}>
-                            <FaEye /> {file.name}
-                        </a>
-                        <FaTrashAlt 
-                            style={{ color: '#d32f2f', cursor: 'pointer' }} 
-                            onClick={() => handleDeleteFicha(row, file.url)}
-                            title="Eliminar ficha"
-                        />
-                    </div>
-                ))}
-                <label style={{ 
-                    cursor: 'pointer', 
-                    color: '#388e3c', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '5px', 
-                    fontWeight: 'bold',
-                    marginTop: '5px'
-                }}>
-                    <FaCloudUploadAlt size={16} /> Adjuntar PDF
+            <div className="maint-ficha-cell">
+                <div className="maint-ficha-list">
+                    {fichas.map((file, i) => (
+                        <div key={i} className="maint-ficha-item">
+                            <span 
+                                onClick={() => {
+                                    setPreviewUrl(file.url);
+                                    setIsPreviewOpen(true);
+                                }}
+                                className="maint-ficha-link"
+                                title={file.name}
+                            >
+                                <FaEye /> {file.name}
+                            </span>
+                            <button 
+                                className="maint-btn-delete-ficha"
+                                onClick={() => handleDeleteFicha(row, file.url)}
+                                title="Eliminar ficha"
+                            >
+                                <FaTrashAlt />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+                <label className="maint-btn-upload-ficha">
+                    <FaCloudUploadAlt /> Adjuntar
                     <input 
                         type="file" 
                         accept="application/pdf" 
@@ -494,7 +517,7 @@ const HojaDeVidaMantenimiento = () => {
             </div>
         );
       },
-      minWidth: "250px"
+      minWidth: "220px"
     }
   ];
 
@@ -531,15 +554,49 @@ const HojaDeVidaMantenimiento = () => {
 
   return (
     <div className="maint-page-container">
-      <h2 className="maint-section-title">
-        <FaBoxOpen /> Hoja de Vida de Inventario de Mantenimiento
-      </h2>
-      <p className="maint-motivational-phrase">
-        "Consulta el historial completo de todos los activos de tu inventario.
-        Utiliza los filtros para una búsqueda más específica."
-      </p>
+      <div className="maint-header-section">
+        <h2 className="maint-section-title">
+          <FaBoxOpen /> Hoja de Vida de Inventario
+        </h2>
+        <p className="maint-motivational-phrase">
+          "Consulta el historial completo de todos los activos de tu inventario."
+        </p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="maint-stats-grid">
+        <div className="maint-stat-card">
+          <div className="maint-stat-icon total"><FaBoxOpen /></div>
+          <div className="maint-stat-info">
+            <span className="maint-stat-value">{stats.total}</span>
+            <span className="maint-stat-label">Total Activos</span>
+          </div>
+        </div>
+        <div className="maint-stat-card">
+          <div className="maint-stat-icon active"><FaBoxOpen /></div>
+          <div className="maint-stat-info">
+            <span className="maint-stat-value">{stats.activos}</span>
+            <span className="maint-stat-label">Activos</span>
+          </div>
+        </div>
+        <div className="maint-stat-card">
+          <div className="maint-stat-icon repair"><FaSpinner /></div>
+          <div className="maint-stat-info">
+            <span className="maint-stat-value">{stats.reparacion}</span>
+            <span className="maint-stat-label">En Reparación</span>
+          </div>
+        </div>
+        <div className="maint-stat-card">
+          <div className="maint-stat-icon inactive"><FaTimes /></div>
+          <div className="maint-stat-info">
+            <span className="maint-stat-value">{stats.baja}</span>
+            <span className="maint-stat-label">Dados de Baja</span>
+          </div>
+        </div>
+      </div>
+
       {error && <div className="error-message">{error}</div>}
-      <div className="maint-form-card" style={{ overflowX: "auto" }}>
+      <div className="maint-table-container">
         <StyleSheetManager
           shouldForwardProp={(prop) =>
             prop !== "minWidth" && prop !== "align" && isPropValid(prop)
@@ -560,6 +617,15 @@ const HojaDeVidaMantenimiento = () => {
           />
         </StyleSheetManager>
       </div>
+
+      <FilePreviewModal 
+        isOpen={isPreviewOpen}
+        onClose={() => {
+            setIsPreviewOpen(false);
+            setPreviewUrl(null);
+        }}
+        fileUrl={previewUrl}
+      />
     </div>
   );
 };

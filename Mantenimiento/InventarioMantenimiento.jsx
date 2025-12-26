@@ -302,7 +302,7 @@ const InventarioMantenimiento = () => {
           <div className="inv-form-grid">
             <div className="inv-form-group">
               <label className="inv-label">Nombre del Activo</label>
-              <input type="text" name="nombre_activo" value={formData.nombre_activo} onChange={handleChange} required className="inv-input" placeholder="Ej. Molino de Carne" />
+              <input type="text" name="nombre_activo" value={formData.nombre_activo} onChange={handleChange} required className="inv-input"  />
             </div>
             <div className="inv-form-group">
               <label className="inv-label">Tipo del Activo</label>
@@ -324,11 +324,11 @@ const InventarioMantenimiento = () => {
             </div>
             <div className="inv-form-group">
               <label className="inv-label">Área / Ubicación</label>
-              <input type="text" name="area_ubicacion" value={formData.area_ubicacion} onChange={handleChange} required className="inv-input" placeholder="Ej. Cocina, Bodega..." />
+              <input type="text" name="area_ubicacion" value={formData.area_ubicacion} onChange={handleChange} required className="inv-input" />
             </div>
             <div className="inv-form-group">
               <label className="inv-label">Marca</label>
-              <input type="text" name="marca" value={formData.marca} onChange={handleChange} className="inv-input" placeholder="Ej. Hobart" />
+              <input type="text" name="marca" value={formData.marca} onChange={handleChange} className="inv-input"  />
             </div>
             <div className="inv-form-group">
               <label className="inv-label">Modelo / Referencia</label>
