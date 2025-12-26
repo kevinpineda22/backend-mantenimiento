@@ -14,7 +14,7 @@ app.use(cors({
 }));
 
 // Habilitar pre-flight para todas las rutas
-app.options('*', cors());
+app.options('(.*)', cors());
   
 app.use(bodyParser.json());
 app.use('/api', registroRoutes);
