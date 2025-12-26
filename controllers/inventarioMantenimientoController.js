@@ -7,13 +7,23 @@ import { generarCodigoActivo } from "../utils/codeGenerator.js"; // Importar des
 // Función auxiliar para subir archivos (reutilizada)
 const subirImagen = async (file, carpeta) => {
   if (!file) return null;
-  let nombreLimpio = file.originalname
-    .replace(/\s/g, "_")
-    .replace(/[^a-zA-Z0-9_.-]/g, "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
 
-  const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
+  // 1. Obtener extensión y nombre base
+  const partes = file.originalname.split('.');
+  const ext = partes.length > 1 ? '.' + partes.pop() : '';
+  const nombreBase = partes.join('.');
+
+  // 2. Limpiar nombre base
+  let nombreSafe = nombreBase
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Quitar acentos
+    .replace(/\s+/g, "_") // Espacios a guion bajo
+    .replace(/[^a-zA-Z0-9_-]/g, "") // Solo alfanuméricos, guion y guion bajo
+    .substring(0, 60); // Limitar longitud para evitar errores de path
+
+  // 3. Construir nombre final
+  const nombreFinal = `${Date.now()}_${nombreSafe}${ext}`;
+  const filePath = `${carpeta}/${nombreFinal}`;
 
   try {
     const { error } = await supabase.storage
