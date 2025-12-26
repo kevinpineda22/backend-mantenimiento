@@ -1,0 +1,589 @@
+/* RedirigirTareaModal.css - Estilos profesionales con colores corporativos */
+
+/* ==================== OVERLAY DEL MODAL ==================== */
+.redir-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.65);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  animation: redirFadeIn 0.3s ease-out;
+}
+
+@keyframes redirFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ==================== CONTENEDOR DEL MODAL ==================== */
+.redir-modal-content {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+  border-radius: 16px;
+  padding: 0;
+  max-width: 700px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(33, 13, 101, 0.25);
+  animation: redirSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 3px solid #210d65; /* Color corporativo principal */
+}
+
+@keyframes redirSlideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Scrollbar personalizada */
+.redir-modal-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.redir-modal-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.redir-modal-content::-webkit-scrollbar-thumb {
+  background: #89DC00; /* Color verde corporativo */
+  border-radius: 10px;
+  border: 2px solid #f1f1f1;
+}
+
+.redir-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #6fb800;
+}
+
+/* ==================== BOTÓN DE CERRAR ==================== */
+.redir-modal-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(238, 90, 82, 0.3);
+}
+
+.redir-modal-close-btn:hover {
+  transform: rotate(90deg) scale(1.1);
+  background: linear-gradient(135deg, #ee5a52, #d43f3a);
+  box-shadow: 0 6px 20px rgba(238, 90, 82, 0.5);
+}
+
+.redir-modal-close-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.redir-modal-close-btn svg {
+  color: white;
+  width: 28px;
+  height: 28px;
+}
+
+/* ==================== HEADER DEL MODAL ==================== */
+.redir-modal-header {
+  background: linear-gradient(135deg, #210d65, #3d1a9e); /* Colores corporativos morados */
+  padding: 30px;
+  border-top-left-radius: 13px;
+  border-top-right-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  box-shadow: 0 4px 12px rgba(33, 13, 101, 0.2);
+}
+
+.redir-header-icon {
+  width: 40px;
+  height: 40px;
+  color: #89DC00; /* Verde corporativo */
+  filter: drop-shadow(0 2px 4px rgba(137, 220, 0, 0.3));
+  animation: redirRotate 2s ease-in-out infinite;
+}
+
+@keyframes redirRotate {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+}
+
+.redir-modal-title {
+  color: white;
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ==================== INFORMACIÓN DE LA TAREA ==================== */
+.redir-tarea-info {
+  background: linear-gradient(135deg, #e8f5e8, #f0fbf0);
+  border: 2px solid #89DC00; /* Verde corporativo */
+  border-radius: 12px;
+  padding: 25px;
+  margin: 25px;
+  box-shadow: 0 4px 12px rgba(137, 220, 0, 0.15);
+}
+
+.redir-info-title {
+  color: #210d65; /* Morado corporativo */
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 2px solid #89DC00;
+  padding-bottom: 10px;
+}
+
+.redir-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.redir-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.redir-full-width {
+  grid-column: 1 / -1;
+}
+
+.redir-info-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #210d65; /* Morado corporativo */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.redir-info-value {
+  font-size: 15px;
+  color: #333;
+  font-weight: 500;
+  background-color: white;
+  padding: 10px;
+  border-radius: 8px;
+  border-left: 3px solid #89DC00; /* Verde corporativo */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* ==================== FORMULARIO ==================== */
+.redir-form {
+  padding: 0 25px 25px 25px;
+}
+
+.redir-form-group {
+  margin-bottom: 25px;
+}
+
+.redir-form-label {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #210d65; /* Morado corporativo */
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.redir-form-input,
+.redir-form-textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: 'Arial', sans-serif;
+  transition: all 0.3s ease;
+  background-color: white;
+  box-sizing: border-box;
+}
+
+.redir-form-input:focus,
+.redir-form-textarea:focus {
+  outline: none;
+  border-color: #89DC00; /* Verde corporativo */
+  box-shadow: 0 0 0 4px rgba(137, 220, 0, 0.15);
+  background-color: #f9fff9;
+}
+
+.redir-form-input:disabled,
+.redir-form-textarea:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.redir-form-textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.6;
+}
+
+.redir-form-hint {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #666;
+  font-style: italic;
+  background-color: #f8f9ff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border-left: 3px solid #210d65; /* Morado corporativo */
+}
+
+/* ==================== BOTONES DEL MODAL ==================== */
+.redir-modal-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 30px;
+  flex-wrap: wrap;
+}
+
+.redir-submit-button,
+.redir-cancel-button {
+  padding: 14px 30px;
+  border: none;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  justify-content: center;
+}
+
+.redir-submit-button {
+  background: linear-gradient(135deg, #89DC00, #6fb800); /* Verde corporativo */
+  color: white;
+}
+
+.redir-submit-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #6fb800, #5a9600);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(137, 220, 0, 0.4);
+}
+
+.redir-submit-button:disabled {
+  background: linear-gradient(135deg, #ccc, #aaa);
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.6;
+}
+
+.redir-cancel-button {
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+  color: white;
+}
+
+.redir-cancel-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5a6268, #495057);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4);
+}
+
+.redir-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.redir-btn-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* ==================== SPINNER DE CARGA ==================== */
+.redir-spinner {
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top: 3px solid white;
+  width: 18px;
+  height: 18px;
+  animation: redirSpin 1s linear infinite;
+}
+
+@keyframes redirSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==================== CAJA DE ADVERTENCIA ==================== */
+.redir-warning-box {
+  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+  border: 2px solid #ffc107;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 25px;
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
+}
+
+.redir-warning-text {
+  margin: 0;
+  color: #856404;
+  font-size: 14px;
+  line-height: 1.7;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.redir-warning-text strong {
+  color: #210d65; /* Morado corporativo */
+}
+
+/* ==================== NUEVO: Estilos para el selector de rol ==================== */
+.redir-form-select {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: 'Arial', sans-serif;
+  transition: all 0.3s ease;
+  background-color: white;
+  box-sizing: border-box;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 14px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.redir-form-select:focus {
+  outline: none;
+  border-color: #89DC00;
+  box-shadow: 0 0 0 4px rgba(137, 220, 0, 0.15);
+  background-color: #f9fff9;
+}
+
+.redir-form-select:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.redir-form-select option {
+  padding: 10px;
+  font-size: 15px;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+  .redir-modal-content {
+    width: 95%;
+    max-height: 95vh;
+    border-radius: 12px;
+  }
+
+  .redir-modal-header {
+    padding: 20px;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .redir-modal-title {
+    font-size: 22px;
+    text-align: center;
+  }
+
+  .redir-header-icon {
+    width: 35px;
+    height: 35px;
+  }
+
+  .redir-tarea-info,
+  .redir-form,
+  .redir-warning-box {
+    margin: 15px;
+    padding: 15px;
+  }
+
+  .redir-info-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .redir-modal-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .redir-submit-button,
+  .redir-cancel-button {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .redir-form-input,
+  .redir-form-textarea {
+    font-size: 16px; /* Evita zoom en iOS */
+  }
+}
+
+@media (max-width: 480px) {
+  .redir-modal-title {
+    font-size: 18px;
+  }
+
+  .redir-info-title {
+    font-size: 16px;
+  }
+
+  .redir-form-label {
+    font-size: 14px;
+  }
+
+  .redir-form-input,
+  .redir-form-textarea {
+    padding: 12px 14px;
+  }
+
+  .redir-modal-close-btn {
+    top: 10px;
+    right: 10px;
+    padding: 6px;
+  }
+
+  .redir-modal-close-btn svg {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* ==================== ANIMACIONES ADICIONALES ==================== */
+.redir-form-group {
+  animation: redirFadeInUp 0.5s ease-out;
+  animation-fill-mode: both;
+}
+
+.redir-form-group:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.redir-form-group:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+@keyframes redirFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==================== ESTADOS DE VALIDACIÓN ==================== */
+.redir-form-input:invalid,
+.redir-form-textarea:invalid {
+  border-color: #dc3545;
+}
+
+.redir-form-input:valid,
+.redir-form-textarea:valid {
+  border-color: #28a745;
+}
+
+/* ==================== ACCESIBILIDAD ==================== */
+.redir-submit-button:focus-visible,
+.redir-cancel-button:focus-visible,
+.redir-modal-close-btn:focus-visible {
+  outline: 3px solid #89DC00; /* Verde corporativo */
+  outline-offset: 2px;
+}
+
+.redir-form-input:focus-visible,
+.redir-form-textarea:focus-visible {
+  outline: 3px solid #89DC00; /* Verde corporativo */
+  outline-offset: 2px;
+}
+
+/* ==================== ESTILOS PARA MIEMBRO ÚNICO ==================== */
+.redir-single-member {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.redir-single-member .redir-form-input {
+  background-color: #f0f8ff;
+  border-color: #89DC00;
+  cursor: not-allowed;
+  font-weight: 600;
+  color: #210d65;
+}
+
+/* ==================== BADGE PARA ROLES QUE NOTIFICAN A TODOS ==================== */
+.redir-notify-all-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.redir-notify-badge {
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  border: 2px solid #4caf50;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #1b5e20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.15);
+}
+
+.redir-notify-badge strong {
+  color: #2e7d32;
+  font-weight: 700;
+}

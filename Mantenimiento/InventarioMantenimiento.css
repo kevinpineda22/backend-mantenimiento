@@ -1,0 +1,236 @@
+/* Mantenimiento/InventarioMantenimiento.css */
+
+:root {
+  --inv-color-primary: #210d65;       /* maint-color-primary-dark */
+  --inv-color-secondary: #3b1a9a;     /* maint-color-primary-medium */
+  --inv-color-accent: #4caf50;        /* maint-color-accent-green */
+  --inv-color-accent-hover: #218838;  /* maint-color-accent-green-dark */
+  --inv-color-text-dark: #333;
+  --inv-color-text-light: #f8f9fa;
+  --inv-color-bg-light: #f4f7f9;
+  --inv-color-card-bg: #ffffff;
+  --inv-border-color: #e0e0e0;
+  --inv-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --inv-radius: 12px;
+  --inv-transition: 0.3s ease;
+}
+
+.inv-page-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--inv-color-text-dark);
+}
+
+.inv-title-section {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.inv-main-title {
+  font-size: 2rem;
+  color: var(--inv-color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.inv-subtitle {
+  color: #666;
+  font-style: italic;
+  font-size: 1rem;
+}
+
+/* --- Acordeón --- */
+.inv-accordion-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.inv-accordion-item {
+  background: var(--inv-color-card-bg);
+  border-radius: var(--inv-radius);
+  box-shadow: var(--inv-shadow);
+  overflow: hidden;
+  border: 1px solid transparent;
+  transition: var(--inv-transition);
+}
+
+.inv-accordion-item.active {
+  border-color: var(--inv-color-secondary);
+}
+
+.inv-accordion-header {
+  background: linear-gradient(to right, #f8f9fa, #ffffff);
+  padding: 15px 20px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s;
+  border-bottom: 1px solid transparent;
+}
+
+.inv-accordion-header:hover {
+  background: #f0f2f5;
+}
+
+.inv-accordion-item.active .inv-accordion-header {
+  background: var(--inv-color-primary);
+  color: var(--inv-color-text-light);
+  border-bottom: 1px solid var(--inv-border-color);
+}
+
+.inv-accordion-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inv-accordion-icon {
+  font-size: 0.9rem;
+}
+
+.inv-accordion-body {
+  padding: 25px;
+  background: #fff;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Grid del Formulario --- */
+.inv-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.inv-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inv-form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.inv-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--inv-color-primary);
+}
+
+.inv-input,
+.inv-select,
+.inv-textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--inv-border-color);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background-color: #fff;
+}
+
+.inv-input:focus,
+.inv-select:focus,
+.inv-textarea:focus {
+  outline: none;
+  border-color: var(--inv-color-secondary);
+  box-shadow: 0 0 0 3px rgba(59, 26, 154, 0.1);
+}
+
+.inv-input.disabled {
+  background-color: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.inv-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* --- Botones --- */
+.inv-btn-next {
+  margin-top: 20px;
+  padding: 10px 24px;
+  background-color: var(--inv-color-secondary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  float: right;
+  transition: background 0.2s;
+}
+
+.inv-btn-next:hover {
+  background-color: var(--inv-color-primary);
+}
+
+.inv-btn-submit {
+  background-color: var(--inv-color-accent);
+  color: white;
+  padding: 12px 30px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 20px;
+  transition: transform 0.1s, background 0.2s;
+}
+
+.inv-btn-submit:hover {
+  background-color: var(--inv-color-accent-hover);
+  transform: translateY(-2px);
+}
+
+.inv-btn-submit:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* --- Carga Masiva --- */
+.inv-upload-card {
+  background: var(--inv-color-card-bg);
+  border-radius: var(--inv-radius);
+  box-shadow: var(--inv-shadow);
+  padding: 25px;
+  margin-top: 40px;
+  border-top: 4px solid var(--inv-color-accent);
+}
+
+.inv-upload-title {
+  font-size: 1.2rem;
+  color: var(--inv-color-text-dark);
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inv-file-info {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: var(--inv-color-accent);
+  font-weight: 500;
+}

@@ -4,6 +4,36 @@ import supabase from "../supabase/cliente.js";
 import ExcelJS from "exceljs";
 import { generarCodigoActivo } from "../utils/codeGenerator.js"; // Importar desde el nuevo util
 
+// Función auxiliar para subir archivos (reutilizada)
+const subirImagen = async (file, carpeta) => {
+  if (!file) return null;
+  let nombreLimpio = file.originalname
+    .replace(/\s/g, "_")
+    .replace(/[^a-zA-Z0-9_.-]/g, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  const filePath = `${carpeta}/${Date.now()}_${nombreLimpio}`;
+
+  try {
+    const { error } = await supabase.storage
+      .from("registro-fotos") // Usamos el mismo bucket
+      .upload(filePath, file.buffer, {
+        contentType: file.mimetype,
+      });
+    if (error) throw error;
+
+    const { data: publicUrlData } = supabase.storage
+      .from("registro-fotos")
+      .getPublicUrl(filePath);
+
+    return publicUrlData.publicUrl;
+  } catch (err) {
+    console.error("Error al subir archivo:", err);
+    throw new Error("Error al subir archivo: " + err.message);
+  }
+};
+
 export const obtenerTiposDeActivos = async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -23,13 +53,37 @@ export const obtenerTiposDeActivos = async (req, res) => {
 export const registrarInventario = async (req, res) => {
     const {
         nombre_activo,
-        tipo_activo, // Este será el 'nombre_tipo' (ej. "Operativa")
+        tipo_activo,
         sede,
-        clasificacion_ubicacion,
+        area_ubicacion, // Mapear a clasificacion_ubicacion
+        marca,
+        modelo_referencia,
+        serial,
         estado_activo,
-        frecuencia_mantenimiento,
-        responsable_gestion
+        potencia,
+        tension_fase,
+        capacidad,
+        diametro_placa,
+        placas_disponibles,
+        material_principal,
+        protecciones_seguridad,
+        fecha_compra,
+        proveedor,
+        garantia_hasta,
+        costo_compra,
+        responsable_gestion,
+        contacto_responsable,
+        codigo_qr,
+        frecuencia_preventivo, // Mapear a frecuencia_mantenimiento
+        ultimo_mantenimiento,
+        proximo_mantenimiento,
+        epp_minimo,
+        riesgos_criticos,
+        limpieza_segura
     } = req.body;
+
+    const foto_activo_file = req.files?.foto_activo?.[0];
+    const documento_riesgos_file = req.files?.documento_riesgos?.[0];
 
     try {
         const { data: tipoExistente, error: tipoError } = await supabase
@@ -42,7 +96,11 @@ export const registrarInventario = async (req, res) => {
             return res.status(400).json({ error: `El tipo de activo '${tipo_activo}' no es válido o no existe en la base de datos de tipos.` });
         }
 
-        const codigo_activo = await generarCodigoActivo(tipo_activo, nombre_activo); // Pasamos nombre completo del tipo
+        const codigo_activo = await generarCodigoActivo(tipo_activo, nombre_activo);
+
+        // Subir archivos
+        const foto_activo_url = foto_activo_file ? await subirImagen(foto_activo_file, "inventario/fotos") : null;
+        const documento_riesgos_url = documento_riesgos_file ? await subirImagen(documento_riesgos_file, "inventario/docs") : null;
 
         const { error: insertError } = await supabase
             .from("inventario_mantenimiento")
@@ -52,10 +110,33 @@ export const registrarInventario = async (req, res) => {
                     nombre_activo,
                     tipo_activo,
                     sede,
-                    clasificacion_ubicacion,
+                    clasificacion_ubicacion: area_ubicacion, // Mapeo
+                    marca,
+                    modelo_referencia,
+                    serial,
                     estado_activo,
-                    frecuencia_mantenimiento,
+                    foto_activo: foto_activo_url,
+                    potencia,
+                    tension_fase,
+                    capacidad,
+                    diametro_placa,
+                    placas_disponibles,
+                    material_principal,
+                    protecciones_seguridad,
+                    fecha_compra,
+                    proveedor,
+                    garantia_hasta,
+                    costo_compra,
                     responsable_gestion,
+                    contacto_responsable,
+                    codigo_qr,
+                    frecuencia_mantenimiento: frecuencia_preventivo, // Mapeo
+                    ultimo_mantenimiento,
+                    proximo_mantenimiento,
+                    epp_minimo,
+                    riesgos_criticos,
+                    limpieza_segura,
+                    documento_riesgos: documento_riesgos_url
                 },
             ]);
 
