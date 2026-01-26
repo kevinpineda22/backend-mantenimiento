@@ -13,6 +13,7 @@ import {
   obtenerTiposDeActivos,
   subirFichaTecnica,
   eliminarFichaTecnica,
+  generarUrlSubida, // ⭐ IMPORTAR NUEVA FUNCIÓN
 } from "../controllers/inventarioMantenimientoController.js";
 
 import {
@@ -69,6 +70,7 @@ router.post("/actividades/redirigir/:id", redirigirTarea);
 // Rutas para el Módulo de Inventario (se mantienen)
 // =========================================
 router.get("/inventario/tipos-activos", obtenerTiposDeActivos);
+router.post("/inventario/upload-url", generarUrlSubida); // ⭐ NUEVA RUTA PARA SIGNED URLS
 router.post(
   "/inventario",
   upload.fields([

@@ -60,6 +60,48 @@ export const obtenerTiposDeActivos = async (req, res) => {
     }
 };
 
+// ⭐ NUEVA FUNCIÓN: Generar URL firmada para subida directa (Bypass Vercel 4.5MB limit)
+export const generarUrlSubida = async (req, res) => {
+  try {
+    const { fileName, folder, fileType } = req.body;
+    
+    if (!fileName || !folder) {
+        return res.status(400).json({ error: "Faltan datos (fileName, folder)" });
+    }
+
+    // Sanitize file name
+    const cleanFileName = fileName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") 
+    .replace(/\s+/g, "_") 
+    .replace(/[^a-zA-Z0-9_.-]/g, "") 
+    .substring(0, 60);
+    
+    const path = `${folder}/${Date.now()}_${cleanFileName}`;
+
+    // Crear URL firmada para subir (PUT)
+    const { data, error } = await supabase
+      .storage
+      .from('registro-fotos') 
+      .createSignedUploadUrl(path);
+
+    if (error) throw error;
+
+    // Obtener la URL pública final
+    const { data: publicData } = supabase.storage.from('registro-fotos').getPublicUrl(path);
+    
+    res.json({ 
+      signedUrl: data.signedUrl, 
+      path: path,
+      publicUrl: publicData.publicUrl 
+    });
+
+  } catch (err) {
+    console.error("Error generando URL de subida:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 export const registrarInventario = async (req, res) => {
     const {
         nombre_activo,
@@ -89,7 +131,10 @@ export const registrarInventario = async (req, res) => {
         proximo_mantenimiento,
         epp_minimo,
         riesgos_criticos,
-        limpieza_segura
+        limpieza_segura,
+        // Campos opcionales si ya vienen como URL
+        foto_activo_url, 
+        documento_riesgos_url
     } = req.body;
 
     const foto_activo_file = req.files?.foto_activo?.[0];
@@ -108,9 +153,17 @@ export const registrarInventario = async (req, res) => {
 
         const codigo_activo = await generarCodigoActivo(tipo_activo, nombre_activo);
 
-        // Subir archivos
-        const foto_activo_url = foto_activo_file ? await subirImagen(foto_activo_file, "inventario/fotos") : null;
-        const documento_riesgos_url = documento_riesgos_file ? await subirImagen(documento_riesgos_file, "inventario/docs") : null;
+        // Subir archivos (Prioridad: Archivo enviado > URL enviada)
+        // Nota: req.body.foto_activo_url viene si el cliente hizo subida directa
+        let final_foto_url = req.body.foto_activo_url || null;
+        let final_doc_url = req.body.documento_riesgos_url || null;
+
+        if (foto_activo_file) {
+             final_foto_url = await subirImagen(foto_activo_file, "inventario/fotos");
+        }
+        if (documento_riesgos_file) {
+             final_doc_url = await subirImagen(documento_riesgos_file, "inventario/docs");
+        }
 
         const { error: insertError } = await supabase
             .from("inventario_mantenimiento")
@@ -125,7 +178,7 @@ export const registrarInventario = async (req, res) => {
                     modelo_referencia,
                     serial,
                     estado_activo,
-                    foto_activo: foto_activo_url,
+                    foto_activo: final_foto_url,
                     potencia,
                     tension_fase,
                     capacidad,
@@ -146,7 +199,7 @@ export const registrarInventario = async (req, res) => {
                     epp_minimo,
                     riesgos_criticos,
                     limpieza_segura,
-                    documento_riesgos: documento_riesgos_url
+                    documento_riesgos: final_doc_url
                 },
             ]);
 

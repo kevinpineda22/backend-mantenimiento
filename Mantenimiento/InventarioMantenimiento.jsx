@@ -93,6 +93,7 @@ const AccordionSection = ({ id, title, icon: Icon, children, activeSection, togg
 
 const InventarioMantenimiento = () => {
   const { setLoading, loading } = useOutletContext();
+  const apiBaseUrl = "https://backend-mantenimiento.vercel.app/api"; // Mover aquí arriba para usar en useEffect
   
   // Secciones en orden para el Step Indicator
   const sections = [
@@ -152,7 +153,7 @@ const InventarioMantenimiento = () => {
   const [excelFile, setExcelFile] = useState(null);
   const [isEditing, setIsEditing] = useState(false); // Para el modo edición (futuro)
 
-  const apiBaseUrl = "https://backend-mantenimiento.vercel.app/api";
+  // const apiBaseUrl = "https://backend-mantenimiento.vercel.app/api"; // YA DECLARADA ARRIBA
 
   // Calcular próximo mantenimiento cuando cambia frecuencia o último mantenimiento
   useEffect(() => {
@@ -186,10 +187,6 @@ const InventarioMantenimiento = () => {
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (files) {
-      // Validación de tamaño (Máximo 4.5MB por restricción de Vercel)
-      if (files[0].size > 4.5 * 1024 * 1024) {
-        toast.warning("⚠️ El archivo supera los 4.5MB y podría ser rechazado por el servidor.");
-      }
       setFormData((prev) => ({ ...prev, [name]: files[0] }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
@@ -204,30 +201,85 @@ const InventarioMantenimiento = () => {
     (tipo) => tipo.nombre === formData.tipo_activo
   );
 
+  // Función auxiliar para subir archivos grandes directamente
+  const uploadFileToSignedUrl = async (file, folder) => {
+    try {
+      // 1. Obtener URL firmada del backend
+      const res = await fetch(`${apiBaseUrl}/inventario/upload-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+           fileName: file.name, 
+           fileType: file.type,
+           folder: folder 
+        })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al obtener URL de subida");
+
+      // 2. Subir archivo directamente a Supabase (PUT)
+      const uploadRes = await fetch(data.signedUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type }
+      });
+
+      if (!uploadRes.ok) throw new Error("Error al subir el archivo a la nube.");
+      
+      return data.publicUrl; // Retornamos la URL pública para guardarla en BD
+    } catch (error) {
+      console.error("Error subiendo archivo:", error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    const dataToSend = new FormData();
-    // Agregar todos los campos al FormData
-    Object.keys(formData).forEach(key => {
-      if (formData[key] !== null) {
-        dataToSend.append(key, formData[key]);
-      }
-    });
-
     try {
+      // 1. Subir archivos primero (si existen)
+      let fotoUrl = null;
+      let docUrl = null;
+
+      if (formData.foto_activo instanceof File) {
+        toast.info("Subiendo foto...");
+        fotoUrl = await uploadFileToSignedUrl(formData.foto_activo, "inventario/fotos");
+      }
+
+      if (formData.documento_riesgos instanceof File) {
+        toast.info("Subiendo documento...");
+        docUrl = await uploadFileToSignedUrl(formData.documento_riesgos, "inventario/docs");
+      }
+
+      // 2. Preparar datos para enviar (JSON)
+      // Ya no usamos FormData porque enviamos URLs
+      const payload = {
+        ...formData,
+        foto_activo_url: fotoUrl,
+        documento_riesgos_url: docUrl
+      };
+
+      // Eliminar los objetos File del payload para no ensuciar
+      delete payload.foto_activo;
+      delete payload.documento_riesgos;
+
       const res = await fetch(`${apiBaseUrl}/inventario`, {
         method: "POST",
-        body: dataToSend, // Enviar FormData
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload),
       });
+
       const data = await res.json();
       if (!res.ok)
         throw new Error(data.error || "Error al registrar el activo.");
 
       toast.success(`Activo registrado: ${data.codigo_activo}`);
       
-      // Reset form
+      // Reset form (Manteniendo estructura)
       setFormData({
         nombre_activo: "", tipo_activo: "", sede: "", area_ubicacion: "", marca: "", modelo_referencia: "", serial: "", estado_activo: "", foto_activo: null,
         potencia: "", tension_fase: "", capacidad: "", diametro_placa: "", placas_disponibles: "", material_principal: "", protecciones_seguridad: "",
@@ -235,7 +287,7 @@ const InventarioMantenimiento = () => {
         frecuencia_preventivo: "", ultimo_mantenimiento: new Date().toISOString().split('T')[0], proximo_mantenimiento: "",
         epp_minimo: "", riesgos_criticos: "", limpieza_segura: "", documento_riesgos: null
       });
-      setActiveSection("identificacion"); // Volver al inicio
+      setActiveSection("identificacion"); 
     } catch (err) {
       toast.error(`Error al registrar: ${err.message}`);
       console.error("Error al registrar activo:", err);
