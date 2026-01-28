@@ -187,6 +187,10 @@ const InventarioMantenimiento = () => {
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (files) {
+      // Validación de tamaño (Máximo 4.5MB por restricción de Vercel)
+      if (files[0].size > 4.5 * 1024 * 1024) {
+        toast.warning("⚠️ El archivo supera los 4.5MB y podría ser rechazado por el servidor.");
+      }
       setFormData((prev) => ({ ...prev, [name]: files[0] }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
@@ -201,85 +205,48 @@ const InventarioMantenimiento = () => {
     (tipo) => tipo.nombre === formData.tipo_activo
   );
 
-  // Función auxiliar para subir archivos grandes directamente
-  const uploadFileToSignedUrl = async (file, folder) => {
-    try {
-      // 1. Obtener URL firmada del backend
-      const res = await fetch(`${apiBaseUrl}/inventario/upload-url`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-           fileName: file.name, 
-           fileType: file.type,
-           folder: folder 
-        })
-      });
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al obtener URL de subida");
-
-      // 2. Subir archivo directamente a Supabase (PUT)
-      const uploadRes = await fetch(data.signedUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type }
-      });
-
-      if (!uploadRes.ok) throw new Error("Error al subir el archivo a la nube.");
-      
-      return data.publicUrl; // Retornamos la URL pública para guardarla en BD
-    } catch (error) {
-      console.error("Error subiendo archivo:", error);
-      throw error;
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
+    const dataToSend = new FormData();
+    // Agregar todos los campos al FormData
+    Object.keys(formData).forEach(key => {
+      if (formData[key] !== null && formData[key] !== "") {
+        dataToSend.append(key, formData[key]);
+      }
+    });
+
     try {
-      // 1. Subir archivos primero (si existen)
-      let fotoUrl = null;
-      let docUrl = null;
-
-      if (formData.foto_activo instanceof File) {
-        toast.info("Subiendo foto...");
-        fotoUrl = await uploadFileToSignedUrl(formData.foto_activo, "inventario/fotos");
-      }
-
-      if (formData.documento_riesgos instanceof File) {
-        toast.info("Subiendo documento...");
-        docUrl = await uploadFileToSignedUrl(formData.documento_riesgos, "inventario/docs");
-      }
-
-      // 2. Preparar datos para enviar (JSON)
-      // Ya no usamos FormData porque enviamos URLs
-      const payload = {
-        ...formData,
-        foto_activo_url: fotoUrl,
-        documento_riesgos_url: docUrl
-      };
-
-      // Eliminar los objetos File del payload para no ensuciar
-      delete payload.foto_activo;
-      delete payload.documento_riesgos;
-
       const res = await fetch(`${apiBaseUrl}/inventario`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload),
+        body: dataToSend, // Enviar FormData
       });
 
-      const data = await res.json();
+      // Manejo específico para error 413 (Archivo muy pesado en Vercel)
+      if (res.status === 413) {
+        throw new Error("El archivo es demasiado grande (Máx 4.5MB). Por favor comprime la imagen o usa un PDF más liviano.");
+      }
+
+      let data;
+      const contentType = res.headers.get("content-type");
+      
+      // Verificar si la respuesta es JSON antes de parsear
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        // Si no es JSON (ej. errores de Vercel en HTML/Texto), leer como texto
+        const textResponse = await res.text();
+        console.error("Respuesta no-JSON del servidor:", textResponse);
+        throw new Error("Error del servidor (No JSON). Revisa la consola o intenta con un archivo más pequeño.");
+      }
+
       if (!res.ok)
         throw new Error(data.error || "Error al registrar el activo.");
 
       toast.success(`Activo registrado: ${data.codigo_activo}`);
       
-      // Reset form (Manteniendo estructura)
+      // Reset form
       setFormData({
         nombre_activo: "", tipo_activo: "", sede: "", area_ubicacion: "", marca: "", modelo_referencia: "", serial: "", estado_activo: "", foto_activo: null,
         potencia: "", tension_fase: "", capacidad: "", diametro_placa: "", placas_disponibles: "", material_principal: "", protecciones_seguridad: "",
@@ -287,7 +254,7 @@ const InventarioMantenimiento = () => {
         frecuencia_preventivo: "", ultimo_mantenimiento: new Date().toISOString().split('T')[0], proximo_mantenimiento: "",
         epp_minimo: "", riesgos_criticos: "", limpieza_segura: "", documento_riesgos: null
       });
-      setActiveSection("identificacion"); 
+      setActiveSection("identificacion"); // Volver al inicio
     } catch (err) {
       toast.error(`Error al registrar: ${err.message}`);
       console.error("Error al registrar activo:", err);
@@ -524,11 +491,11 @@ const InventarioMantenimiento = () => {
           <div className="inv-form-grid">
             <div className="inv-form-group">
               <label className="inv-label">Nombre del Activo</label>
-              <input type="text" name="nombre_activo" value={formData.nombre_activo} onChange={handleChange} required className="inv-input"  />
+              <input type="text" name="nombre_activo" value={formData.nombre_activo} onChange={handleChange} className="inv-input"  />
             </div>
             <div className="inv-form-group">
               <label className="inv-label">Tipo del Activo</label>
-              <select name="tipo_activo" value={formData.tipo_activo} onChange={handleChange} required className="inv-select">
+              <select name="tipo_activo" value={formData.tipo_activo} onChange={handleChange} className="inv-select">
                 <option value="" disabled>Selecciona un tipo</option>
                 {tiposActivosCatalogo.map((tipo) => (
                   <option key={tipo.nombre} value={tipo.nombre}>
@@ -542,14 +509,14 @@ const InventarioMantenimiento = () => {
             </div>
             <div className="inv-form-group">
               <label className="inv-label">Sede</label>
-              <select name="sede" value={formData.sede} onChange={handleChange} required className="inv-select">
+              <select name="sede" value={formData.sede} onChange={handleChange} className="inv-select">
                 <option value="" disabled>Selecciona una sede</option>
                 {sedes.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div className="inv-form-group">
               <label className="inv-label">Área / Ubicación</label>
-              <input type="text" name="area_ubicacion" value={formData.area_ubicacion} onChange={handleChange} required className="inv-input" />
+              <input type="text" name="area_ubicacion" value={formData.area_ubicacion} onChange={handleChange} className="inv-input" />
             </div>
             <div className="inv-form-group">
               <label className="inv-label">Marca</label>
@@ -565,7 +532,7 @@ const InventarioMantenimiento = () => {
             </div>
             <div className="inv-form-group">
               <label className="inv-label">Estado del Activo</label>
-              <select name="estado_activo" value={formData.estado_activo} onChange={handleChange} required className="inv-select">
+              <select name="estado_activo" value={formData.estado_activo} onChange={handleChange} className="inv-select">
                 <option value="" disabled>Selecciona un estado</option>
                 {estadosActivo.map((estado) => <option key={estado} value={estado}>{estado}</option>)}
               </select>
@@ -626,7 +593,7 @@ const InventarioMantenimiento = () => {
             <div className="inv-form-group"><label className="inv-label">Proveedor</label><input type="text" name="proveedor" value={formData.proveedor} onChange={handleChange} className="inv-input" /></div>
             <div className="inv-form-group"><label className="inv-label">Garantía Hasta</label><input type="date" name="garantia_hasta" value={formData.garantia_hasta} onChange={handleChange} className="inv-input" /></div>
             <div className="inv-form-group"><label className="inv-label">Costo de Compra (COP)</label><input type="number" name="costo_compra" value={formData.costo_compra} onChange={handleChange} className="inv-input" /></div>
-            <div className="inv-form-group"><label className="inv-label">Responsable del Equipo</label><input type="text" name="responsable_gestion" value={formData.responsable_gestion} onChange={handleChange} required className="inv-input" /></div>
+            <div className="inv-form-group"><label className="inv-label">Responsable del Equipo</label><input type="text" name="responsable_gestion" value={formData.responsable_gestion} onChange={handleChange} className="inv-input" /></div>
             <div className="inv-form-group"><label className="inv-label">Contacto Responsable</label><input type="text" name="contacto_responsable" value={formData.contacto_responsable} onChange={handleChange} className="inv-input" /></div>
             <div className="inv-form-group"><label className="inv-label">Código/URL QR (SOP/Registro)</label><input type="text" name="codigo_qr" value={formData.codigo_qr} onChange={handleChange} className="inv-input" /></div>
           </div>
@@ -651,7 +618,7 @@ const InventarioMantenimiento = () => {
           <div className="inv-form-grid">
             <div className="inv-form-group">
               <label className="inv-label">Frecuencia Preventivo</label>
-              <select name="frecuencia_preventivo" value={formData.frecuencia_preventivo} onChange={handleChange} required className="inv-select">
+              <select name="frecuencia_preventivo" value={formData.frecuencia_preventivo} onChange={handleChange} className="inv-select">
                 <option value="" disabled>Selecciona una frecuencia</option>
                 {frecuenciasMantenimiento.map((frec) => <option key={frec} value={frec}>{frec}</option>)}
               </select>

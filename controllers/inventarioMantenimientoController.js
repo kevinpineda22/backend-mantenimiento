@@ -172,12 +172,12 @@ export const registrarInventario = async (req, res) => {
                     codigo_activo,
                     nombre_activo,
                     tipo_activo,
-                    sede,
-                    clasificacion_ubicacion: area_ubicacion, // Mapeo
+                    sede: sede || "Sin Sede",
+                    clasificacion_ubicacion: area_ubicacion || "Sin Ubicación", // Mapeo
                     marca,
                     modelo_referencia,
                     serial,
-                    estado_activo,
+                    estado_activo: estado_activo || "Inactivo",
                     foto_activo: final_foto_url,
                     potencia,
                     tension_fase,
@@ -190,10 +190,10 @@ export const registrarInventario = async (req, res) => {
                     proveedor,
                     garantia_hasta,
                     costo_compra,
-                    responsable_gestion,
+                    responsable_gestion: responsable_gestion || "Por asignar",
                     contacto_responsable,
                     codigo_qr,
-                    frecuencia_mantenimiento: frecuencia_preventivo, // Mapeo
+                    frecuencia_mantenimiento: frecuencia_preventivo || "N/A", // Mapeo
                     ultimo_mantenimiento,
                     proximo_mantenimiento,
                     epp_minimo,
