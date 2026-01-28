@@ -80,7 +80,14 @@ router.post(
   registrarInventario
 );
 router.get("/inventario", obtenerInventario);
-router.put("/inventario/:id", actualizarInventario);
+router.put(
+  "/inventario/:id",
+  upload.fields([
+    { name: "foto_activo", maxCount: 1 },
+    { name: "documento_riesgos", maxCount: 1 },
+  ]),
+  actualizarInventario
+);
 router.delete("/inventario/:id", eliminarInventario);
 router.post(
   "/inventario/upload-excel",
