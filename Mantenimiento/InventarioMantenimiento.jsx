@@ -20,6 +20,8 @@ import {
   FaShieldAlt,
   FaShoppingCart,
   FaIdCard,
+  FaSearch,
+  FaBan
 } from "react-icons/fa";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -151,7 +153,9 @@ const InventarioMantenimiento = () => {
   });
 
   const [excelFile, setExcelFile] = useState(null);
-  const [isEditing, setIsEditing] = useState(false); // Para el modo edición (futuro)
+  const [isEditing, setIsEditing] = useState(false); 
+  const [editingId, setEditingId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // const apiBaseUrl = "https://backend-mantenimiento.vercel.app/api"; // YA DECLARADA ARRIBA
 
@@ -205,6 +209,81 @@ const InventarioMantenimiento = () => {
     (tipo) => tipo.nombre === formData.tipo_activo
   );
 
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) return toast.warning("Ingresa un código para buscar");
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/inventario?codigo=${searchTerm.trim()}`);
+      if (!res.ok) throw new Error("Error al buscar activo");
+      const data = await res.json();
+      
+      if (data && data.length > 0) {
+        const activo = data[0];
+        setFormData({
+            nombre_activo: activo.nombre_activo || "",
+            tipo_activo: activo.tipo_activo || "",
+            sede: activo.sede || "",
+            area_ubicacion: activo.clasificacion_ubicacion || "",
+            marca: activo.marca || "",
+            modelo_referencia: activo.modelo_referencia || "",
+            serial: activo.serial || "",
+            estado_activo: activo.estado_activo || "",
+            foto_activo: null, // No podemos pre-cargar el archivo, pero el backend mantendrá la URL anterior si no enviamos nada
+            
+            potencia: activo.potencia || "",
+            tension_fase: activo.tension_fase || "",
+            capacidad: activo.capacidad || "",
+            diametro_placa: activo.diametro_placa || "",
+            placas_disponibles: activo.placas_disponibles || "",
+            material_principal: activo.material_principal || "",
+            protecciones_seguridad: activo.protecciones_seguridad || "",
+            
+            fecha_compra: activo.fecha_compra || "",
+            proveedor: activo.proveedor || "",
+            garantia_hasta: activo.garantia_hasta || "",
+            costo_compra: activo.costo_compra || "",
+            responsable_gestion: activo.responsable_gestion || "",
+            contacto_responsable: activo.contacto_responsable || "",
+            codigo_qr: activo.codigo_qr || "",
+            
+            frecuencia_preventivo: activo.frecuencia_mantenimiento || "",
+            ultimo_mantenimiento: activo.ultimo_mantenimiento || "",
+            proximo_mantenimiento: activo.proximo_mantenimiento || "",
+            
+            epp_minimo: activo.epp_minimo || "",
+            riesgos_criticos: activo.riesgos_criticos || "",
+            limpieza_segura: activo.limpieza_segura || "",
+            documento_riesgos: null
+        });
+        setEditingId(activo.id);
+        setIsEditing(true);
+        setActiveSection("identificacion");
+        toast.success("Activo encontrado. Modo Edición activado.");
+      } else {
+        toast.info("No se encontró ningún activo con ese código.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al buscar el activo.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditingId(null);
+    setSearchTerm("");
+    setFormData({
+        nombre_activo: "", tipo_activo: "", sede: "", area_ubicacion: "", marca: "", modelo_referencia: "", serial: "", estado_activo: "", foto_activo: null,
+        potencia: "", tension_fase: "", capacidad: "", diametro_placa: "", placas_disponibles: "", material_principal: "", protecciones_seguridad: "",
+        fecha_compra: "", proveedor: "", garantia_hasta: "", costo_compra: "", responsable_gestion: "", contacto_responsable: "", codigo_qr: "",
+        frecuencia_preventivo: "", ultimo_mantenimiento: new Date().toISOString().split('T')[0], proximo_mantenimiento: "",
+        epp_minimo: "", riesgos_criticos: "", limpieza_segura: "", documento_riesgos: null
+    });
+    toast.info("Edición cancelada. Formulario limpiado.");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -218,8 +297,11 @@ const InventarioMantenimiento = () => {
     });
 
     try {
-      const res = await fetch(`${apiBaseUrl}/inventario`, {
-        method: "POST",
+      const url = isEditing ? `${apiBaseUrl}/inventario/${editingId}` : `${apiBaseUrl}/inventario`;
+      const method = isEditing ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method: method,
         body: dataToSend, // Enviar FormData
       });
 
@@ -244,20 +326,22 @@ const InventarioMantenimiento = () => {
       if (!res.ok)
         throw new Error(data.error || "Error al registrar el activo.");
 
-      toast.success(`Activo registrado: ${data.codigo_activo}`);
+      toast.success(isEditing ? "Activo actualizado correctamente" : `Activo registrado: ${data.codigo_activo}`);
       
       // Reset form
-      setFormData({
-        nombre_activo: "", tipo_activo: "", sede: "", area_ubicacion: "", marca: "", modelo_referencia: "", serial: "", estado_activo: "", foto_activo: null,
-        potencia: "", tension_fase: "", capacidad: "", diametro_placa: "", placas_disponibles: "", material_principal: "", protecciones_seguridad: "",
-        fecha_compra: "", proveedor: "", garantia_hasta: "", costo_compra: "", responsable_gestion: "", contacto_responsable: "", codigo_qr: "",
-        frecuencia_preventivo: "", ultimo_mantenimiento: new Date().toISOString().split('T')[0], proximo_mantenimiento: "",
-        epp_minimo: "", riesgos_criticos: "", limpieza_segura: "", documento_riesgos: null
-      });
-      setActiveSection("identificacion"); // Volver al inicio
+      if (!isEditing) {
+          setFormData({
+            nombre_activo: "", tipo_activo: "", sede: "", area_ubicacion: "", marca: "", modelo_referencia: "", serial: "", estado_activo: "", foto_activo: null,
+            potencia: "", tension_fase: "", capacidad: "", diametro_placa: "", placas_disponibles: "", material_principal: "", protecciones_seguridad: "",
+            fecha_compra: "", proveedor: "", garantia_hasta: "", costo_compra: "", responsable_gestion: "", contacto_responsable: "", codigo_qr: "",
+            frecuencia_preventivo: "", ultimo_mantenimiento: new Date().toISOString().split('T')[0], proximo_mantenimiento: "",
+            epp_minimo: "", riesgos_criticos: "", limpieza_segura: "", documento_riesgos: null
+          });
+          setActiveSection("identificacion"); // Volver al inicio
+      }
     } catch (err) {
-      toast.error(`Error al registrar: ${err.message}`);
-      console.error("Error al registrar activo:", err);
+      toast.error(`Error: ${err.message}`);
+      console.error("Error al procesar la solicitud:", err);
     } finally {
       setLoading(false);
     }
@@ -376,8 +460,6 @@ const InventarioMantenimiento = () => {
           "Estado del Activo": "estado_activo",
           "Potencia": "potencia",
           "Tensión / Fase": "tension_fase",
-          "Capacidad": "capacidad",
-          "Diámetro Placa": "diametro_placa",
           "Placas Disponibles": "placas_disponibles",
           "Material Principal": "material_principal",
           "Protecciones de Seguridad": "protecciones_seguridad",
@@ -457,9 +539,78 @@ const InventarioMantenimiento = () => {
           <FaBoxOpen /> Gestión de Inventario
         </h2>
         <p className="inv-subtitle">
-          Completa los pasos para registrar un nuevo activo en el sistema.
+          {isEditing 
+            ? "Modo Edición: Actualiza la información del activo seleccionado."
+            : "Completa los pasos para registrar un nuevo activo en el sistema."}
         </p>
       </div>
+
+       {/* Sección de Búsqueda para Editar */}
+       <div className="inv-search-card" style={{ 
+          background: 'rgba(255, 255, 255, 0.05)', 
+          padding: '1.5rem', 
+          borderRadius: '12px', 
+          marginBottom: '2rem',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
+       }}>
+          <h3 style={{ color: '#fff', fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FaEdit /> ¿Necesitas editar un activo existente?
+          </h3>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <input 
+              type="text" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Ingresa el código del activo (Ej. MT-IF-001)"
+              style={{
+                flex: 1,
+                padding: '10px 15px',
+                borderRadius: '8px',
+                border: '1px solid #ccc',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                color: '#333'
+              }}
+            />
+            <button 
+              onClick={handleSearch}
+              type="button"
+              style={{
+                padding: '10px 20px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: '#00D4FF',
+                color: '#000',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <FaSearch /> Buscar
+            </button>
+            {isEditing && (
+              <button 
+                onClick={handleCancelEdit}
+                type="button"
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  border: '1px solid #ff4d4d',
+                  backgroundColor: 'transparent',
+                  color: '#ff4d4d',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <FaBan /> Cancelar Edición
+              </button>
+            )}
+          </div>
+       </div>
 
       {/* Step Indicator */}
       <div className="inv-steps-container">
@@ -675,7 +826,7 @@ const InventarioMantenimiento = () => {
           </div>
           <div className="inv-action-buttons">
              <button type="submit" className="inv-btn-submit" disabled={loading}>
-              <FaSave /> {loading ? "Guardando..." : "Finalizar y Guardar Todo"}
+              <FaSave /> {loading ? (isEditing ? "Actualizando..." : "Guardando...") : (isEditing ? "Actualizar Información" : "Finalizar y Guardar Todo")}
             </button>
           </div>
         </AccordionSection>

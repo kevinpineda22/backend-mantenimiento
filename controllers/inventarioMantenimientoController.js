@@ -217,10 +217,19 @@ export const registrarInventario = async (req, res) => {
 
 export const obtenerInventario = async (req, res) => {
     try {
-        const { data, error } = await supabase
+        const { codigo } = req.query; // Permitir buscar por código
+        
+        let query = supabase
             .from("inventario_mantenimiento")
-            .select("*")
-            .order('created_at', { ascending: false });
+            .select("*");
+
+        if (codigo) {
+            query = query.eq("codigo_activo", codigo);
+        } else {
+            query = query.order('created_at', { ascending: false });
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -233,39 +242,119 @@ export const obtenerInventario = async (req, res) => {
 
 export const actualizarInventario = async (req, res) => {
     const { id } = req.params;
+    
+    // Extraer campos del body (igual que en registrarInventario)
     const {
         nombre_activo,
         tipo_activo,
         sede,
-        clasificacion_ubicacion,
+        area_ubicacion, // Mapear a clasificacion_ubicacion
+        marca,
+        modelo_referencia,
+        serial,
         estado_activo,
-        frecuencia_mantenimiento,
-        responsable_gestion
+        potencia,
+        tension_fase,
+        capacidad,
+        diametro_placa,
+        placas_disponibles,
+        material_principal,
+        protecciones_seguridad,
+        fecha_compra,
+        proveedor,
+        garantia_hasta,
+        costo_compra,
+        responsable_gestion,
+        contacto_responsable,
+        codigo_qr,
+        frecuencia_preventivo, // Mapear a frecuencia_mantenimiento
+        ultimo_mantenimiento,
+        proximo_mantenimiento,
+        epp_minimo,
+        riesgos_criticos,
+        limpieza_segura,
+        // URLs directas si las envían
+        foto_activo_url,
+        documento_riesgos_url
     } = req.body;
 
+    const foto_activo_file = req.files?.foto_activo?.[0];
+    const documento_riesgos_file = req.files?.documento_riesgos?.[0];
+
     try {
-        const { data: tipoExistente, error: tipoError } = await supabase
+        // Objeto de actualización base
+        const updateData = {};
+
+        // Función auxiliar para agregar si existe (y no es null/undefined)
+        const addIfPresent = (key, value) => {
+            if (value !== undefined) updateData[key] = value === "" ? null : value;
+        };
+
+        addIfPresent("nombre_activo", nombre_activo);
+        addIfPresent("tipo_activo", tipo_activo);
+        addIfPresent("sede", sede);
+        addIfPresent("clasificacion_ubicacion", area_ubicacion);
+        addIfPresent("marca", marca);
+        addIfPresent("modelo_referencia", modelo_referencia);
+        addIfPresent("serial", serial);
+        addIfPresent("estado_activo", estado_activo);
+        addIfPresent("potencia", potencia);
+        addIfPresent("tension_fase", tension_fase);
+        addIfPresent("capacidad", capacidad);
+        addIfPresent("diametro_placa", diametro_placa);
+        addIfPresent("placas_disponibles", placas_disponibles);
+        addIfPresent("material_principal", material_principal);
+        addIfPresent("protecciones_seguridad", protecciones_seguridad);
+        addIfPresent("fecha_compra", fecha_compra);
+        addIfPresent("proveedor", proveedor);
+        addIfPresent("garantia_hasta", garantia_hasta);
+        addIfPresent("costo_compra", costo_compra);
+        addIfPresent("responsable_gestion", responsable_gestion);
+        addIfPresent("contacto_responsable", contacto_responsable);
+        addIfPresent("codigo_qr", codigo_qr);
+        addIfPresent("frecuencia_mantenimiento", frecuencia_preventivo);
+        addIfPresent("ultimo_mantenimiento", ultimo_mantenimiento);
+        addIfPresent("proximo_mantenimiento", proximo_mantenimiento);
+        addIfPresent("epp_minimo", epp_minimo);
+        addIfPresent("riesgos_criticos", riesgos_criticos);
+        addIfPresent("limpieza_segura", limpieza_segura);
+
+        // Validar tipo activo si cambió
+        if (tipo_activo) {
+             const { data: tipoExistente, error: tipoError } = await supabase
             .from('tipos_activos')
             .select('codigo_tipo')
             .eq('nombre_tipo', tipo_activo)
             .single();
 
-        if (tipoError || !tipoExistente) {
-            return res.status(400).json({ error: `El tipo de activo '${tipo_activo}' no es válido o no existe.` });
+            if (tipoError || !tipoExistente) {
+                return res.status(400).json({ error: `El tipo de activo '${tipo_activo}' no es válido o no existe.` });
+            }
+        }
+
+        // Manejo de Archivos
+        // Si viene archivo nuevo, subirlo y actualizar URL. 
+        // Si viene URL explicita (subida directa), usarla.
+        // Si no viene nada, NO tocar el campo (mantener anterior).
+
+        if (foto_activo_file) {
+             const url = await subirImagen(foto_activo_file, "inventario/fotos");
+             updateData.foto_activo = url;
+        } else if (foto_activo_url) {
+             updateData.foto_activo = foto_activo_url;
+        }
+
+        if (documento_riesgos_file) {
+             const url = await subirImagen(documento_riesgos_file, "inventario/docs");
+             updateData.documento_riesgos = url;
+        } else if (documento_riesgos_url) {
+             updateData.documento_riesgos = documento_riesgos_url;
         }
 
         const { error: updateError } = await supabase
             .from("inventario_mantenimiento")
-            .update({
-                nombre_activo,
-                tipo_activo,
-                sede,
-                clasificacion_ubicacion,
-                estado_activo,
-                frecuencia_mantenimiento,
-                responsable_gestion,
-            })
-            .eq("id", id);
+            .update(updateData)
+            .eq("id", id); // Usar ID interno para update seguro. Si usan codigo_activo, cambiar query.
 
         if (updateError) {
             throw updateError;
