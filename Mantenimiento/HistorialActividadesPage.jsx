@@ -154,10 +154,12 @@ const HistorialActividadesPage = () => {
   }, [userEmail, isSuperAdmin]);
 
   const handleEditChange = async (e) => {
-    const { name, value, files } = e.target;
+    const { name, value, files, checked, type } = e.target;
     if (name === "precio") {
       const numericValue = value.replace(/\D/g, "");
       setEditData((prev) => ({ ...prev, [name]: numericValue }));
+    } else if (type === "checkbox") {
+       setEditData((prev) => ({ ...prev, [name]: checked }));
     } else if (files && files[0]) {
       const fieldName = name === "fotoAntes" ? "Foto Antes" : "Foto Después";
 
@@ -230,6 +232,7 @@ const HistorialActividadesPage = () => {
       fechaFinal: formatDateForInput(row.fecha_final),
       fotoAntes: null,
       fotoDespues: null,
+      sanidad: row.sanidad || false,
     });
     setEditFotoAntesPreview(row.foto_antes_url || null);
     setEditFotoDespuesPreview(row.foto_despues_url || null);
@@ -296,6 +299,7 @@ const HistorialActividadesPage = () => {
       fechaFinal: editData.fechaFinal,
       designado: editData.designado,
       nombre_solicitante: editData.nombre_solicitante || "",
+      sanidad: editData.sanidad || false,
       notificarFinalizacion: editData.notificarFinalizacion,
       observacion: editData.observacion || "",
     };
@@ -442,6 +446,7 @@ const HistorialActividadesPage = () => {
         fechaInicio: formatDateForInput(selectedRowForSeguimiento.fecha_inicio),
         fechaFinal: formatDateForInput(selectedRowForSeguimiento.fecha_final),
         designado: selectedRowForSeguimiento.designado || "",
+        sanidad: selectedRowForSeguimiento.sanidad || false,
         observacion: updatedSeguimiento,
         notificarFinalizacion: "false",
       };
@@ -1381,6 +1386,18 @@ const HistorialActividadesPage = () => {
                     className="maint-form-textarea"
                     rows={6}
                   />
+                </div>
+                {/* Checkbox de Sanidad (Nuevo) */}
+                <div className="maint-form-group-sanidad">
+                  <label>
+                    <input
+                      type="checkbox"
+                      name="sanidad"
+                      checked={editData.sanidad || false}
+                      onChange={handleEditChange}
+                    />
+                    <span>¿Es registro de Sanidad?</span>
+                  </label>
                 </div>
               </div>
 

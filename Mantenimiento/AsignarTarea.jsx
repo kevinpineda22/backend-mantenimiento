@@ -26,6 +26,7 @@ const INITIAL_FORM_DATA = {
   cargoEmpleado: "",
   enviarCorreo: true,
   nombreSolicitante: "",
+  sanidad: false,
 };
 
 const AsignarTarea = () => {
@@ -238,6 +239,7 @@ const AsignarTarea = () => {
       cargo_empleado: formData.cargoEmpleado,
       nombre_solicitante: formData.nombreSolicitante,
       enviarCorreo: formData.enviarCorreo,
+      sanidad: formData.sanidad,
     };
 
     const formPayload = new FormData();
@@ -621,7 +623,21 @@ const AsignarTarea = () => {
               Enviar Correo de Notificación
             </label>
           </div>
+  {/* CHECKBOX SANIDAD */}
+          <div className="maint-form-group maint-form-group-checkbox">
+            <label className="maint-form-label">
+              <input
+                type="checkbox"
+                name="sanidad"
+                checked={formData.sanidad}
+                onChange={handleChange}
+                style={{ marginRight: '8px', verticalAlign: 'middle' }}
+              />
+              ¿Es registro de Sanidad?
+            </label>
+          </div>
 
+        
         </div>
 
         <button type="submit" className="maint-btn-submit" disabled={loading}>

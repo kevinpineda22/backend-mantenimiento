@@ -612,3 +612,37 @@
   color: #555;
   line-height: 1.6;
 }
+
+/* --- Estilos para el Checkbox de Sanidad (Nuevo) --- */
+.maint-form-group-sanidad {
+  margin-bottom: 20px;
+  padding: 12px;
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.maint-form-group-sanidad label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  margin: 0;
+  width: 100%;
+}
+
+.maint-form-group-sanidad input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #10B981;
+}
+
+.maint-form-group-sanidad span {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #166534;
+}

@@ -356,6 +356,7 @@ export const actualizarActividadCompleta = async (req, res) => {
     observacion,
     designado, // ⭐ CAPTURAR DESIGNADO
     notificarFinalizacion,
+    sanidad, // ⭐ CAPTURAR SANIDAD
   } = req.body;
   const fotoAntes = req.files?.fotoAntes?.[0];
   const fotoDespues = req.files?.fotoDespues?.[0];
@@ -415,6 +416,7 @@ export const actualizarActividadCompleta = async (req, res) => {
         fecha_final: fechaFinalStr,
         observacion,
         designado, // ⭐ ACTUALIZAR DESIGNADO
+        sanidad: sanidad === "true" || sanidad === true, // ⭐ ACTUALIZAR SANIDAD
         foto_antes_url: urlAntes,
         foto_despues_url: urlDespues,
       })

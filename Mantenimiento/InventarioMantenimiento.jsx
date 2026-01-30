@@ -47,7 +47,9 @@ const frecuenciasMantenimiento = [
   "Diario",
   "Semanal",
   "Mensual",
+  "Bimestral",
   "Trimestral",
+  "Cuatrimestral",
   "Semestral",
   "Anual",
   "Según Uso",
@@ -56,23 +58,23 @@ const frecuenciasMantenimiento = [
 
 const tiposActivosCatalogo = [
   {
-    nombre: "INFRAESTRUCTURA",
+    nombre: "Infraestructura",
     descripcion: "Pisos, Techos, Estanterías, Cuartos Fríos",
   },
   {
-    nombre: "REFRIGERACION Y RESPALDO",
+    nombre: "Refrigeracion y Respaldo",
     descripcion: "Neveras, Congeladores, Cavas, Aires Acondicionados, Generadores",
   },
   {
-    nombre: "OPERATIVA",
-    descripcion: "Selladoras, Malacate, Carros de Mercado, Basculas, Ventiladores",
+    nombre: "Operativa",
+    descripcion: "Selladoras, Malacate, Carros de Mercado, Basculas, Ventiladores, molino y sierra de cinta",
   },
   {
-    nombre: "SOPORTE Y SEGURIDAD",
+    nombre: "Soporte y Seguridad",
     descripcion: "Computadores, Impresoras, Cámaras, Alarmas, Tableros/Redes. Extintores",
   },
   {
-    nombre: "VEHICULO Y TRANSPORTE",
+    nombre: "Vehiculo y Transporte",
     descripcion: "Motos, Carros, Camiones, Moto Carro",
   },
 ];
@@ -176,7 +178,9 @@ const InventarioMantenimiento = () => {
       case "Diario": nextDate.setDate(lastDate.getDate() + 1); break;
       case "Semanal": nextDate.setDate(lastDate.getDate() + 7); break;
       case "Mensual": nextDate.setMonth(lastDate.getMonth() + 1); break;
+      case "Bimestral": nextDate.setMonth(lastDate.getMonth() + 2); break;
       case "Trimestral": nextDate.setMonth(lastDate.getMonth() + 3); break;
+      case "Cuatrimestral": nextDate.setMonth(lastDate.getMonth() + 4); break;
       case "Semestral": nextDate.setMonth(lastDate.getMonth() + 6); break;
       case "Anual": nextDate.setFullYear(lastDate.getFullYear() + 1); break;
       default: return; // Según Uso o N/A no calcula
@@ -329,15 +333,20 @@ const InventarioMantenimiento = () => {
       toast.success(isEditing ? "Activo actualizado correctamente" : `Activo registrado: ${data.codigo_activo}`);
       
       // Reset form
-      if (!isEditing) {
-          setFormData({
-            nombre_activo: "", tipo_activo: "", sede: "", area_ubicacion: "", marca: "", modelo_referencia: "", serial: "", estado_activo: "", foto_activo: null,
-            potencia: "", tension_fase: "", capacidad: "", diametro_placa: "", placas_disponibles: "", material_principal: "", protecciones_seguridad: "",
-            fecha_compra: "", proveedor: "", garantia_hasta: "", costo_compra: "", responsable_gestion: "", contacto_responsable: "", codigo_qr: "",
-            frecuencia_preventivo: "", ultimo_mantenimiento: new Date().toISOString().split('T')[0], proximo_mantenimiento: "",
-            epp_minimo: "", riesgos_criticos: "", limpieza_segura: "", documento_riesgos: null
-          });
-          setActiveSection("identificacion"); // Volver al inicio
+      setFormData({
+        nombre_activo: "", tipo_activo: "", sede: "", area_ubicacion: "", marca: "", modelo_referencia: "", serial: "", estado_activo: "", foto_activo: null,
+        potencia: "", tension_fase: "", capacidad: "", diametro_placa: "", placas_disponibles: "", material_principal: "", protecciones_seguridad: "",
+        fecha_compra: "", proveedor: "", garantia_hasta: "", costo_compra: "", responsable_gestion: "", contacto_responsable: "", codigo_qr: "",
+        frecuencia_preventivo: "", ultimo_mantenimiento: new Date().toISOString().split('T')[0], proximo_mantenimiento: "",
+        epp_minimo: "", riesgos_criticos: "", limpieza_segura: "", documento_riesgos: null
+      });
+      setActiveSection("identificacion"); // Volver al inicio
+
+      // Si estaba editando, salir del modo edición
+      if (isEditing) {
+        setIsEditing(false);
+        setEditingId(null);
+        setSearchTerm("");
       }
     } catch (err) {
       toast.error(`Error: ${err.message}`);
@@ -460,6 +469,8 @@ const InventarioMantenimiento = () => {
           "Estado del Activo": "estado_activo",
           "Potencia": "potencia",
           "Tensión / Fase": "tension_fase",
+          "Capacidad": "capacidad",
+          "Diámetro Placa": "diametro_placa",
           "Placas Disponibles": "placas_disponibles",
           "Material Principal": "material_principal",
           "Protecciones de Seguridad": "protecciones_seguridad",
