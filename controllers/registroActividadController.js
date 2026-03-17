@@ -64,8 +64,9 @@ export const registrarTareaAsignada = async (req, res) => {
     sanidad, // ⭐ NUEVO: Recibir valor de sanidad
   } = req.body;
 
-  const fotoAntes = req.files?.fotoAntes?.[0];
-  const fotoDespues = req.files?.fotoDespues?.[0];
+  // ⭐ NUEVO LOGIN: RECIBIR ARRAY DE ARCHIVOS
+  const fotosAntes = req.files?.fotoAntes || [];
+  const fotosDespues = req.files?.fotoDespues || [];
 
   if (
     !sede ||
@@ -88,10 +89,26 @@ export const registrarTareaAsignada = async (req, res) => {
       ? fechaFinal[0]
       : fechaFinal;
 
-    const urlAntes = fotoAntes ? await subirImagen(fotoAntes, "antes") : null;
-    const urlDespues = fotoDespues
-      ? await subirImagen(fotoDespues, "despues")
-      : null;
+    // ⭐ PROCESAR IMAGENES EN PARALELO
+    const urlsAntes = await Promise.all(
+      fotosAntes.map((file) => subirImagen(file, "antes"))
+    );
+    const urlsDespues = await Promise.all(
+      fotosDespues.map((file) => subirImagen(file, "despues"))
+    );
+
+    // ⭐ CONVERTIR A JSON PARA GUARDAR MULTIPLES URLs
+    // Si hay una sola imagen y queremos mantener compatibilidad, podríamos guardar string directo,
+    // pero para consistencia futura es mejor siempre array en JSON.
+    // Sin embargo, para minimizar impacto en frontend existente que no se actualice hoy,
+    // podríamos seguir guardando string si es solo 1.
+    // DADO EL REQUERIMIENTO: "agregar la posibilidad de poder adjuntar varias imagenes",
+    // asumiré que el frontend se actualizará para leer arrays.
+    
+    // GUARDAMOS COMO JSON STRINGIFY
+    const foto_antes_final = JSON.stringify(urlsAntes);
+    const foto_despues_final = JSON.stringify(urlsDespues);
+
 
     // ⭐ NUEVA LÓGICA: Manejo de múltiples responsables
     const responsables = responsable.includes(";")
@@ -124,8 +141,8 @@ export const registrarTareaAsignada = async (req, res) => {
           responsable: responsablePrincipal,
           responsables_grupo: responsablesGrupo, // ⭐ CAMPO CLAVE PARA TAREAS GRUPALES
           creador_email: creador_email,
-          foto_antes_url: urlAntes,
-          foto_despues_url: urlDespues,
+          foto_antes_url: foto_antes_final, // ⭐ USA JSON
+          foto_despues_url: foto_despues_final, // ⭐ USA JSON
           designado: designado || null, // ⭐ DESIGNADO ES OPCIONAL
           nombre_empleado: nombre_empleado || null,
           cedula_empleado: cedula_empleado || null,
@@ -357,9 +374,13 @@ export const actualizarActividadCompleta = async (req, res) => {
     designado, // ⭐ CAPTURAR DESIGNADO
     notificarFinalizacion,
     sanidad, // ⭐ CAPTURAR SANIDAD
+    fotoAntesKept, // ⭐ CAPTURAR IMÁGENES QUE SE MANTIENEN (JSON STRING)
+    fotoDespuesKept, // ⭐ CAPTURAR IMÁGENES QUE SE MANTIENEN (JSON STRING)
   } = req.body;
-  const fotoAntes = req.files?.fotoAntes?.[0];
-  const fotoDespues = req.files?.fotoDespues?.[0];
+
+  // ⭐ MANEJO DE MÚLTIPLES ARCHIVOS NUEVOS
+  const newFotosAntes = req.files?.fotoAntes || [];
+  const newFotosDespues = req.files?.fotoDespues || [];
 
   if (!sede || !actividad || !fechaInicio || !estado || !responsable) {
     return res
@@ -389,12 +410,59 @@ export const actualizarActividadCompleta = async (req, res) => {
         .json({ error: "Registro de actividad no encontrado" });
     }
 
-    const urlAntes = fotoAntes
-      ? await subirImagen(fotoAntes, "antes")
-      : registroExistente.foto_antes_url;
-    const urlDespues = fotoDespues
-      ? await subirImagen(fotoDespues, "despues")
-      : registroExistente.foto_despues_url;
+    // --- PROCESAMIENTO DE IMÁGENES ANTES ---
+    let keptUrlsAntes = [];
+    if (fotoAntesKept) {
+      try {
+        keptUrlsAntes = JSON.parse(fotoAntesKept);
+        if (!Array.isArray(keptUrlsAntes)) keptUrlsAntes = [keptUrlsAntes]; // Si era string único
+      } catch (e) {
+        keptUrlsAntes = [fotoAntesKept]; // Fallback si no es JSON válido
+      }
+    } else {
+      // Si no envía nada explícito sobre qué mantener, mantenemos lo que había (comportamiento por defecto)
+      // Pero debemos detectar si lo que había es un JSON array o un string simple
+      try {
+        const parsed = JSON.parse(registroExistente.foto_antes_url);
+        keptUrlsAntes = Array.isArray(parsed) ? parsed : [registroExistente.foto_antes_url];
+      } catch (e) {
+        keptUrlsAntes = registroExistente.foto_antes_url ? [registroExistente.foto_antes_url] : [];
+      }
+    }
+
+    // Subir nuevas imágenes
+    const newUrlsAntes = await Promise.all(
+        newFotosAntes.map((file) => subirImagen(file, "antes"))
+    );
+    
+    // Combinar
+    const finalUrlsAntes = [...keptUrlsAntes, ...newUrlsAntes].filter(Boolean); // Filtrar nulls/undefined
+
+
+    // --- PROCESAMIENTO DE IMÁGENES DESPUÉS ---
+    let keptUrlsDespues = [];
+    if (fotoDespuesKept) {
+      try {
+        keptUrlsDespues = JSON.parse(fotoDespuesKept);
+        if (!Array.isArray(keptUrlsDespues)) keptUrlsDespues = [keptUrlsDespues];
+      } catch (e) {
+        keptUrlsDespues = [fotoDespuesKept];
+      }
+    } else {
+       try {
+        const parsed = JSON.parse(registroExistente.foto_despues_url);
+        keptUrlsDespues = Array.isArray(parsed) ? parsed : [registroExistente.foto_despues_url];
+      } catch (e) {
+        keptUrlsDespues = registroExistente.foto_despues_url ? [registroExistente.foto_despues_url] : [];
+      }
+    }
+
+    const newUrlsDespues = await Promise.all(
+        newFotosDespues.map((file) => subirImagen(file, "despues"))
+    );
+
+    const finalUrlsDespues = [...keptUrlsDespues, ...newUrlsDespues].filter(Boolean);
+
 
     const nuevoEstado = estado;
     const yaEstabaCompletado = ["completado", "no_completado"].includes(
@@ -417,8 +485,8 @@ export const actualizarActividadCompleta = async (req, res) => {
         observacion,
         designado, // ⭐ ACTUALIZAR DESIGNADO
         sanidad: sanidad === "true" || sanidad === true, // ⭐ ACTUALIZAR SANIDAD
-        foto_antes_url: urlAntes,
-        foto_despues_url: urlDespues,
+        foto_antes_url: JSON.stringify(finalUrlsAntes), // GUARDAR COMO JSON
+        foto_despues_url: JSON.stringify(finalUrlsDespues), // GUARDAR COMO JSON
       })
       .eq("id", id);
 

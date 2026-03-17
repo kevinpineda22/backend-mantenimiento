@@ -12,6 +12,7 @@ import {
   optimizeImage,
   validateFile,
   formatDateForInput,
+  parseImageUrls, // ⭐ Nuevo helper importado
 } from "./mantenimientoUtils";
 import "./RegistroComun.css";
 import "./HistorialActividadesPage.css";

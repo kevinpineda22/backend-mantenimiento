@@ -38,8 +38,8 @@ const upload = multer({ storage: multer.memoryStorage() }); // Configuración de
 router.post(
   "/tareas/asignar",
   upload.fields([
-    { name: "fotoAntes", maxCount: 1 },
-    { name: "fotoDespues", maxCount: 1 },
+    { name: "fotoAntes", maxCount: 6 },
+    { name: "fotoDespues", maxCount: 6 },
   ]),
   registrarTareaAsignada // ⭐ NUEVO: Endpoint para asignación de tareas (Líder/SST)
 );
@@ -54,8 +54,8 @@ router.get("/historial-por-responsable", obtenerHistorialPorResponsable); // ⭐
 router.put(
   "/actividades/full/:id",
   upload.fields([
-    { name: "fotoAntes", maxCount: 1 },
-    { name: "fotoDespues", maxCount: 1 },
+    { name: "fotoAntes", maxCount: 6 },
+    { name: "fotoDespues", maxCount: 6 },
   ]),
   actualizarActividadCompleta
 );

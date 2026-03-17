@@ -12,6 +12,7 @@ import {
   optimizeImage,
   validateFile,
   formatDateForInput,
+  parseImageUrls, // ⭐ IMPORTAR HELPER
 } from "./mantenimientoUtils";
 import FilterPanelMantenimiento from "./FilterPanelMantenimiento/FilterPanelMantenimiento";
 import RedirigirTareaModal from "./RedirigirTarea/RedirigirTareaModal";
@@ -24,8 +25,12 @@ const HistorialActividadesPage = () => {
   const [error, setError] = useState(null);
   const [editData, setEditData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editFotoAntesPreview, setEditFotoAntesPreview] = useState(null);
-  const [editFotoDespuesPreview, setEditFotoDespuesPreview] = useState(null);
+  // ⭐ NUEVOS ESTADOS PARA EDICIÓN MÚLTIPLE
+  const [editFotoAntesPreview, setEditFotoAntesPreview] = useState([]); 
+  const [editFotoDespuesPreview, setEditFotoDespuesPreview] = useState([]);
+  const [fotoAntesKept, setFotoAntesKept] = useState([]); 
+  const [fotoDespuesKept, setFotoDespuesKept] = useState([]);
+
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState("");
   const [isOptimizingImage, setIsOptimizingImage] = useState(false);
@@ -160,69 +165,63 @@ const HistorialActividadesPage = () => {
       setEditData((prev) => ({ ...prev, [name]: numericValue }));
     } else if (type === "checkbox") {
        setEditData((prev) => ({ ...prev, [name]: checked }));
-    } else if (files && files[0]) {
+    } else if (files && files.length > 0) {
       const fieldName = name === "fotoAntes" ? "Foto Antes" : "Foto Después";
+      const setPreview = name === "fotoAntes" ? setEditFotoAntesPreview : setEditFotoDespuesPreview;
+      const currentFiles = editData[name] || [];
 
       if (name === "fotoDespues") {
         setNewFotoDespuesUploaded(true);
       }
-
-      if (!validateFile(files[0], fieldName)) {
-        if (name === "fotoAntes") setEditFotoAntesPreview(null);
-        if (name === "fotoDespues") setEditFotoDespuesPreview(null);
-        return;
+      
+      const filesArray = Array.from(files);
+      if ((currentFiles.length + filesArray.length) > 6) { 
+          Swal.fire("Límite excedido", "Máximo 6 imágenes nuevas", "error");
+          return;
       }
 
-      try {
-        const file = files[0];
-        setIsOptimizingImage(true);
-        const result = await optimizeImage(file);
+      setIsOptimizingImage(true);
+      const newFiles = [];
+      const newPreviews = [];
 
-        if (result === file) {
-          setEditData((prev) => ({ ...prev, [name]: file }));
-          const fileUrl = URL.createObjectURL(file);
-          if (name === "fotoAntes") setEditFotoAntesPreview(fileUrl);
-          if (name === "fotoDespues") setEditFotoDespuesPreview(fileUrl);
-        } else {
-          const originalSize = (result.originalSize / 1024 / 1024).toFixed(2);
-          const optimizedSize = (result.optimizedSize / 1024 / 1024).toFixed(2);
-          const reduction = (
-            ((result.originalSize - result.optimizedSize) /
-              result.originalSize) *
-            100
-          ).toFixed(1);
+      for (const file of filesArray) {
+        if (!validateFile(file, fieldName)) continue;
 
-          Swal.fire({
-            icon: "success",
-            title: "¡Imagen Optimizada!",
-            html: `<p><strong>${fieldName}</strong> ha sido optimizada:</p><ul style="text-align: left; list-style: none; padding: 0;"><li>📦 Tamaño: ${originalSize}MB → ${optimizedSize}MB</li><li>📉 Reducción: ${reduction}%</li><li>🖼️ Formato: WebP</li></ul>`,
-            timer: 3000,
-            timerProgressBar: true,
-            confirmButtonColor: "#89DC00",
-            showConfirmButton: false,
-          });
-
-          setEditData((prev) => ({ ...prev, [name]: result.file }));
-          const fileUrl = URL.createObjectURL(result.file);
-          if (name === "fotoAntes") setEditFotoAntesPreview(fileUrl);
-          if (name === "fotoDespues") setEditFotoDespuesPreview(fileUrl);
+        try {
+          const result = await optimizeImage(file);
+          const finalFile = result.file || result;
+          newFiles.push(finalFile);
+          newPreviews.push(URL.createObjectURL(finalFile));
+        } catch (error) {
+          console.error("Error optimizando:", error);
+          newFiles.push(file);
+          newPreviews.push(URL.createObjectURL(file));
         }
-      } catch (error) {
-        console.error("Error al optimizar la imagen:", error);
-        const file = files[0];
-        setEditData((prev) => ({ ...prev, [name]: file }));
-        const fileUrl = URL.createObjectURL(file);
-        if (name === "fotoAntes") setEditFotoAntesPreview(fileUrl);
-        if (name === "fotoDespues") setEditFotoDespuesPreview(fileUrl);
-      } finally {
-        setIsOptimizingImage(false);
       }
+
+      if (newFiles.length > 0) {
+        setEditData((prev) => ({ ...prev, [name]: [...(prev[name] || []), ...newFiles] }));
+        setPreview((prev) => [...prev, ...newPreviews]);
+        
+        Swal.fire({
+            icon: "success",
+            title: "Imágenes Añadidas",
+            text: `Se añadieron ${newFiles.length} imágenes.`,
+            timer: 2000,
+            showConfirmButton: false,
+        });
+      }
+      setIsOptimizingImage(false);
     } else {
       setEditData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
   const handleEditClick = (row) => {
+    // 1. Obtener y parsear URLs existentes
+    const antesUrls = parseImageUrls(row.foto_antes_url);
+    const despuesUrls = parseImageUrls(row.foto_despues_url);
+
     setEditData({
       ...row,
       designado: row.designado || "",
@@ -230,14 +229,44 @@ const HistorialActividadesPage = () => {
       nombre_solicitante: row.nombre_solicitante || "",
       fechaInicio: formatDateForInput(row.fecha_inicio),
       fechaFinal: formatDateForInput(row.fecha_final),
-      fotoAntes: null,
-      fotoDespues: null,
+      fotoAntes: [],   // Array para NUEVOS archivos
+      fotoDespues: [], // Array para NUEVOS archivos
       sanidad: row.sanidad || false,
     });
-    setEditFotoAntesPreview(row.foto_antes_url || null);
-    setEditFotoDespuesPreview(row.foto_despues_url || null);
+    
+    // 2. Establecer imágenes conservadas (kept)
+    setFotoAntesKept(antesUrls);
+    setFotoDespuesKept(despuesUrls);
+
+    // 3. Inicializar previews de nuevas imágenes vacíos
+    setEditFotoAntesPreview([]);
+    setEditFotoDespuesPreview([]);
+    
     setIsEditing(true);
     setNewFotoDespuesUploaded(false);
+  };
+
+  // Funciones para eliminar imágenes en el modal
+  const handleRemoveKeptImage = (type, index) => {
+    if (type === "antes") {
+      setFotoAntesKept((prev) => prev.filter((_, i) => i !== index));
+    } else {
+      setFotoDespuesKept((prev) => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleRemoveNewImage = (type, index) => {
+    if (type === "antes") {
+      const newFiles = editData.fotoAntes.filter((_, i) => i !== index);
+      const newPreviews = editFotoAntesPreview.filter((_, i) => i !== index);
+      setEditData((prev) => ({ ...prev, fotoAntes: newFiles }));
+      setEditFotoAntesPreview(newPreviews);
+    } else {
+      const newFiles = editData.fotoDespues.filter((_, i) => i !== index);
+      const newPreviews = editFotoDespuesPreview.filter((_, i) => i !== index);
+      setEditData((prev) => ({ ...prev, fotoDespues: newFiles }));
+      setEditFotoDespuesPreview(newPreviews);
+    }
   };
 
   const handleEditSubmit = async (e) => {
@@ -302,6 +331,9 @@ const HistorialActividadesPage = () => {
       sanidad: editData.sanidad || false,
       notificarFinalizacion: editData.notificarFinalizacion,
       observacion: editData.observacion || "",
+      // ⭐ ENVIAR ARRAYS DE IMÁGENES CONSERVADAS (JSON string)
+      fotoAntesKept: JSON.stringify(fotoAntesKept),
+      fotoDespuesKept: JSON.stringify(fotoDespuesKept),
     };
 
     const formPayload = new FormData();
@@ -311,10 +343,18 @@ const HistorialActividadesPage = () => {
       }
     });
 
-    if (editData.fotoAntes instanceof File)
-      formPayload.append("fotoAntes", editData.fotoAntes);
-    if (editData.fotoDespues instanceof File)
-      formPayload.append("fotoDespues", editData.fotoDespues);
+    // ⭐ ENVIAR MÚLTIPLES ARCHIVOS NUEVOS
+    if (editData.fotoAntes && editData.fotoAntes.length > 0) {
+      editData.fotoAntes.forEach((file) => {
+        formPayload.append("fotoAntes", file);
+      });
+    }
+
+    if (editData.fotoDespues && editData.fotoDespues.length > 0) {
+      editData.fotoDespues.forEach((file) => {
+        formPayload.append("fotoDespues", file);
+      });
+    }
 
     try {
       const response = await fetch(
@@ -937,117 +977,51 @@ const HistorialActividadesPage = () => {
       },
       {
         name: "Foto Antes",
-        cell: (row) =>
-          row.foto_antes_url ? (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              {row.foto_antes_url.endsWith(".pdf") ? (
-                <a
-                  href={row.foto_antes_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="maint-preview-link"
-                >
-                  Ver PDF
-                </a>
-              ) : (
-                <button
-                  onClick={() => openImageViewer(row.foto_antes_url)}
-                  className="maint-historial__action-btn"
-                  title="Ver imagen"
-                >
-                  <img
-                    src={row.foto_antes_url}
-                    alt="Antes"
-                    className="maint-historial__thumbnail"
-                    loading="lazy"
-                  />
-                </button>
-              )}
-              <button
-                onClick={() => handleDeleteImage(row, "antes")}
-                className="maint-delete-image-btn"
-                style={{
-                  fontSize: "0.7rem",
-                  color: "#d33",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                }}
-                title="Eliminar imagen"
-              >
-                Eliminar
-              </button>
+        cell: (row) => {
+          const urls = parseImageUrls(row.foto_antes_url);
+          if (!urls || urls.length === 0) return <span>Sin archivo</span>;
+          
+          return (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '120px' }}>
+              {urls.map((url, index) => (
+                <div key={index} style={{ position: 'relative' }}>
+                  {url.endsWith(".pdf") ? (
+                    <a href={url} target="_blank" rel="noreferrer" className="maint-preview-link" title="Ver PDF">📄</a>
+                  ) : (
+                    <button onClick={() => openImageViewer(url)} className="maint-historial__action-btn" title="Ver imagen">
+                      <img src={url} alt={`Antes ${index}`} className="maint-historial__thumbnail" style={{ width: '40px', height: '40px', objectFit: 'cover' }} loading="lazy" />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
-          ) : (
-            <span>Sin archivo</span>
-          ),
-        width: "120px", // ✅ CAMBIO
-        // ✅ REMOVIDO: center: true
+          );
+        },
+        width: "140px",
       },
       {
         name: "Foto Después",
-        cell: (row) =>
-          row.foto_despues_url ? (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              {row.foto_despues_url.endsWith(".pdf") ? (
-                <a
-                  href={row.foto_despues_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="maint-preview-link"
-                >
-                  Ver PDF
-                </a>
-              ) : (
-                <button
-                  onClick={() => openImageViewer(row.foto_despues_url)}
-                  className="maint-historial__action-btn"
-                  title="Ver imagen"
-                >
-                  <img
-                    src={row.foto_despues_url}
-                    alt="Después"
-                    className="maint-historial__thumbnail"
-                    loading="lazy"
-                  />
-                </button>
-              )}
-              <button
-                onClick={() => handleDeleteImage(row, "despues")}
-                className="maint-delete-image-btn"
-                style={{
-                  fontSize: "0.7rem",
-                  color: "#d33",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                }}
-                title="Eliminar imagen"
-              >
-                Eliminar
-              </button>
+        cell: (row) => {
+          const urls = parseImageUrls(row.foto_despues_url);
+          if (!urls || urls.length === 0) return <span>Sin archivo</span>;
+          
+          return (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '120px' }}>
+              {urls.map((url, index) => (
+                <div key={index} style={{ position: 'relative' }}>
+                  {url.endsWith(".pdf") ? (
+                    <a href={url} target="_blank" rel="noreferrer" className="maint-preview-link" title="Ver PDF">📄</a>
+                  ) : (
+                    <button onClick={() => openImageViewer(url)} className="maint-historial__action-btn" title="Ver imagen">
+                      <img src={url} alt={`Después ${index}`} className="maint-historial__thumbnail" style={{ width: '40px', height: '40px', objectFit: 'cover' }} loading="lazy" />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
-          ) : (
-            <span>Sin archivo</span>
-          ),
-        width: "120px", // ✅ CAMBIO
-        // ✅ REMOVIDO: center: true
+          );
+        },
+        width: "140px",
       },
       {
         name: "Acciones",
@@ -1402,8 +1376,9 @@ const HistorialActividadesPage = () => {
               </div>
 
               <div className="maint-historial__photo-section">
-                <div className="maint-form-group maint-historial__photo-preview">
-                  <label className="maint-form-label">Foto Antes:</label>
+                {/* FOTO ANTES */}
+                 <div className="maint-form-group maint-historial__photo-preview">
+                  <label className="maint-form-label">Foto Antes (Máx 6):</label>
                   <input
                     type="file"
                     name="fotoAntes"
@@ -1411,31 +1386,47 @@ const HistorialActividadesPage = () => {
                     onChange={handleEditChange}
                     className="maint-form-input"
                     disabled={isOptimizingImage}
+                    multiple
                   />
-                  <div className="maint-historial__image-wrapper">
-                    {(editData.foto_antes_url || editFotoAntesPreview) &&
-                      (editData.foto_antes_url?.endsWith(".pdf") ||
-                      editFotoAntesPreview?.endsWith(".pdf") ? (
-                        <a
-                          href={editFotoAntesPreview || editData.foto_antes_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="maint-historial__preview-link"
-                        >
-                          Ver PDF
-                        </a>
-                      ) : (
-                        <img
-                          src={editFotoAntesPreview || editData.foto_antes_url}
-                          alt="Antes"
-                          className="maint-thumbnail"
-                          style={{ marginTop: "8px" }}
-                        />
-                      ))}
+                  
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                    {/* Imágenes Existentes (Kept) */}
+                    {fotoAntesKept.map((url, index) => (
+                      <div key={`kept-${index}`} style={{ position: 'relative', width: '80px', height: '80px' }}>
+                         {url.endsWith(".pdf") ? (
+                            <a href={url} target="_blank" rel="noreferrer" style={{ fontSize: '10px' }}>PDF</a>
+                         ) : (
+                            <img src={url} alt="kept" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                         )}
+                         <button
+                           type="button"
+                           onClick={() => handleRemoveKeptImage('antes', index)}
+                           style={{ position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: '18px', height: '18px', fontSize: '10px', cursor: 'pointer' }}
+                         >X</button>
+                      </div>
+                    ))}
+
+                     {/* Imágenes Nuevas (New) */}
+                    {editFotoAntesPreview && editFotoAntesPreview.map((url, index) => (
+                      <div key={`new-${index}`} style={{ position: 'relative', width: '80px', height: '80px', border: '2px solid #89DC00' }}>
+                         {url.endsWith(".pdf") ? (
+                            <a href={url} target="_blank" rel="noreferrer" style={{ fontSize: '10px' }}>PDF</a>
+                         ) : (
+                            <img src={url} alt="new" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                         )}
+                         <button
+                           type="button"
+                           onClick={() => handleRemoveNewImage('antes', index)}
+                           style={{ position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: '18px', height: '18px', fontSize: '10px', cursor: 'pointer' }}
+                         >X</button>
+                      </div>
+                    ))}
                   </div>
                 </div>
+
+                {/* FOTO DESPUÉS */}
                 <div className="maint-form-group maint-historial__photo-preview">
-                  <label className="maint-form-label">Foto Después:</label>
+                  <label className="maint-form-label">Foto Después (Máx 6):</label>
                   <input
                     type="file"
                     name="fotoDespues"
@@ -1443,42 +1434,43 @@ const HistorialActividadesPage = () => {
                     onChange={handleEditChange}
                     className="maint-form-input"
                     disabled={isOptimizingImage}
+                    multiple
                   />
-                  {newFotoDespuesUploaded && (
-                    <p
-                      style={{
-                        color: "#4caf50",
-                        fontSize: "0.9rem",
-                        fontStyle: "italic",
-                      }}
-                    >
-                      Nueva foto cargada.
-                    </p>
-                  )}
-                  <div className="maint-historial__image-wrapper">
-                    {(editData.foto_despues_url || editFotoDespuesPreview) &&
-                      (editData.foto_despues_url?.endsWith(".pdf") ||
-                      editFotoDespuesPreview?.endsWith(".pdf") ? (
-                        <a
-                          href={
-                            editFotoDespuesPreview || editData.foto_despues_url
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                          className="maint-historial__preview-link"
-                        >
-                          Ver PDF
-                        </a>
-                      ) : (
-                        <img
-                          src={
-                            editFotoDespuesPreview || editData.foto_despues_url
-                          }
-                          alt="Después"
-                          className="maint-thumbnail"
-                          style={{ marginTop: "8px" }}
-                        />
-                      ))}
+                  
+                  {newFotoDespuesUploaded && <p style={{ color: '#4caf50', fontSize: '0.8rem' }}>Nuevas imágenes listas</p>}
+
+                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                    {/* Imágenes Existentes (Kept) */}
+                    {fotoDespuesKept.map((url, index) => (
+                      <div key={`kept-${index}`} style={{ position: 'relative', width: '80px', height: '80px' }}>
+                         {url.endsWith(".pdf") ? (
+                            <a href={url} target="_blank" rel="noreferrer" style={{ fontSize: '10px' }}>PDF</a>
+                         ) : (
+                            <img src={url} alt="kept" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                         )}
+                         <button
+                           type="button"
+                           onClick={() => handleRemoveKeptImage('despues', index)}
+                           style={{ position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: '18px', height: '18px', fontSize: '10px', cursor: 'pointer' }}
+                         >X</button>
+                      </div>
+                    ))}
+
+                     {/* Imágenes Nuevas (New) */}
+                    {editFotoDespuesPreview && editFotoDespuesPreview.map((url, index) => (
+                      <div key={`new-${index}`} style={{ position: 'relative', width: '80px', height: '80px', border: '2px solid #89DC00' }}>
+                         {url.endsWith(".pdf") ? (
+                            <a href={url} target="_blank" rel="noreferrer" style={{ fontSize: '10px' }}>PDF</a>
+                         ) : (
+                            <img src={url} alt="new" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                         )}
+                         <button
+                           type="button"
+                           onClick={() => handleRemoveNewImage('despues', index)}
+                           style={{ position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: '18px', height: '18px', fontSize: '10px', cursor: 'pointer' }}
+                         >X</button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>

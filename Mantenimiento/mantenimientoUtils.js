@@ -1,4 +1,4 @@
-// src/utils/mantenimientoUtils.js
+﻿// src/utils/mantenimientoUtils.js
 
 // --- 1. Configuración Centralizada de Responsables y Correos ---
 export const RESPONSABLES_CONFIG = {
@@ -8,7 +8,7 @@ export const RESPONSABLES_CONFIG = {
   },
   Lideres: { 
     isGroup: true, 
-    // ⭐ OPCIÓN 1: Selección individual (mantiene control específico)
+    // ? OPCIÓN 1: Selección individual (mantiene control específico)
     requireSpecific: true,
     members: [
       { name: "Líder 1 - Plaza", email: "lideroperativo1@merkahorrosas.com" },
@@ -22,19 +22,19 @@ export const RESPONSABLES_CONFIG = {
       { name: "Johan", email: "johanmerkahorro777@gmail.com" }, */
     ]
   },
-  SST: { 
-    isGroup: true, 
-    // ⭐ OPCIÓN 2: Asignación múltiple (ambos reciben y cualquiera puede actuar)
+  SST: {
+    isGroup: true,
+     // ? OPCIÓN 2: Asignación múltiple (ambos reciben y cualquiera puede actuar)
     requireSpecific: false,
-    notifyAll: true, // 🔑 Esta es la clave
+    notifyAll: true, // ?? Esta es la clave
     members: [
       { name: "SST", email: "sistemageneralsst@merkahorrosas.com" },
       { name: "SST", email: "auxiliarsst@merkahorrosas.com" },
     ]
   },
   Suministros: { 
-    isGroup: false,
-    requiresDotacion: true, // 🔑 Esta propiedad ya existe
+    isGroup: false, 
+    requiresDotacion: true, // ?? Esta propiedad ya existe
     members: [{ name: "Suministros Único", email: "almacen@merkahorrosas.com" }] 
   },
    Sistemas: { 
@@ -114,19 +114,43 @@ export const optimizeImage = (file, maxWidth = 800, quality = 0.8) => {
                 }
                 canvas.width = width;
                 canvas.height = height;
+
                 ctx.drawImage(img, 0, 0, width, height);
 
                 canvas.toBlob((blob) => {
-                    if (!blob) { reject(new Error("Error al crear la imagen optimizada")); return; }
-                    const optimizedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".webp"), { type: "image/webp", });
-                    resolve({ 
-                        file: optimizedFile, 
-                        originalSize: file.size, 
+                    if (!blob) {
+                        reject(new Error("Error al crear la imagen optimizada"));
+                        return;
+                    }
+                    const optimizedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".webp"), {
+                        type: "image/webp",
+                    });
+                    
+                    resolve({
+                        file: optimizedFile,
+                        originalSize: file.size,
                         optimizedSize: blob.size,
                     });
                 }, "image/webp", quality);
-            } catch (error) { reject(error); }
+            } catch (error) {
+                reject(error);
+            }
         };
         img.src = URL.createObjectURL(file);
     });
+};
+
+/**
+ * Helper para parsear URLs de imágenes que pueden venir como string (legacy) o JSON array.
+ */
+export const parseImageUrls = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed;
+    return [value];
+  } catch (e) {
+    return [value];
+  }
 };

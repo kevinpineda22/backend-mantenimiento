@@ -19,8 +19,8 @@ const INITIAL_FORM_DATA = {
   responsableEmail: "", 
   fechaInicio: formatDateForInput(new Date()),
   estado: "pendiente",
-  fotoAntes: null, 
-  fotoDespues: null,
+  fotoAntes: [], // ⭐ CAMBIO: Inicializar como array
+  fotoDespues: [], // ⭐ CAMBIO: Inicializar como array
   nombreEmpleado: "",
   cedulaEmpleado: "",
   cargoEmpleado: "",
@@ -32,8 +32,8 @@ const INITIAL_FORM_DATA = {
 const AsignarTarea = () => {
   const { setLoading, loading } = useOutletContext();
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
-  const [fotoAntesPreview, setFotoAntesPreview] = useState(null); 
-  const [fotoDespuesPreview, setFotoDespuesPreview] = useState(null);
+  const [fotoAntesPreview, setFotoAntesPreview] = useState([]); // ⭐ CAMBIO: Array de previews
+  const [fotoDespuesPreview, setFotoDespuesPreview] = useState([]); // ⭐ CAMBIO: Array de previews
   const [isOptimizingImage, setIsOptimizingImage] = useState(false);
   const [userEmail, setUserEmail] = useState("");
 
@@ -75,56 +75,80 @@ const AsignarTarea = () => {
 
   const getFileStateAndSetter = (name) => {
     if (name === "fotoAntes") {
-      return { setPreview: setFotoAntesPreview, preview: fotoAntesPreview, fieldName: "Foto Antes" };
+      return { setPreview: setFotoAntesPreview, preview: fotoAntesPreview || [], fieldName: "Foto Antes" };
     }
     if (name === "fotoDespues") {
-      return { setPreview: setFotoDespuesPreview, preview: fotoDespuesPreview, fieldName: "Foto Después" };
+      return { setPreview: setFotoDespuesPreview, preview: fotoDespuesPreview || [], fieldName: "Foto Después" };
     }
-    return { setPreview: () => {}, preview: null, fieldName: "Archivo" };
+    return { setPreview: () => {}, preview: [], fieldName: "Archivo" };
   };
   
-  const handleFileChange = async (e) => {
+const handleFileChange = async (e) => {
     const { name, files } = e.target;
-    if (files && files[0]) {
-      const { setPreview, fieldName } = getFileStateAndSetter(name);
+    if (files && files.length > 0) {
+      const { setPreview, preview, fieldName } = getFileStateAndSetter(name);
+      
+      // Aseguramos que sea array
+      const currentFiles = Array.isArray(formData[name]) ? formData[name] : [];
+      const filesArray = Array.from(files);
 
-      if (!validateFile(files[0], fieldName)) {
-        setPreview(null);
+      if (currentFiles.length + filesArray.length > 6) {
+        Swal.fire({
+          icon: "error",
+          title: "Límite Excedido",
+          text: "Solo se permiten máximo 6 imágenes por campo.",
+          confirmButtonColor: "#89DC00",
+        });
         return;
       }
 
-      try {
-        const file = files[0];
-        setIsOptimizingImage(true);
-        const result = await optimizeImage(file);
+      setIsOptimizingImage(true);
+      const newFiles = [];
+      const newPreviews = [];
 
-        const finalFile = result.file || result;
-        const fileUrl = URL.createObjectURL(finalFile);
-        
-        setFormData((prev) => ({ ...prev, [name]: finalFile }));
-        setPreview(fileUrl);
-        
-        if (result.originalSize && result.optimizedSize) {
-          Swal.fire({
-            icon: "success",
-            title: "¡Imagen Optimizada!",
-            text: `Tamaño reducido de ${(result.originalSize / 1024 / 1024).toFixed(2)}MB a ${(result.optimizedSize / 1024 / 1024).toFixed(2)}MB.`,
-            timer: 3000,
-            timerProgressBar: true,
-            confirmButtonColor: "#89DC00",
-            showConfirmButton: false,
-          });
+      // Procesar imágenes secuencialmente para optimizar
+      for (const file of filesArray) {
+        if (!validateFile(file, fieldName)) continue;
+
+        try {
+          const result = await optimizeImage(file);
+          const finalFile = result.file || result;
+          newFiles.push(finalFile);
+          newPreviews.push(URL.createObjectURL(finalFile));
+        } catch (error) {
+          console.error(`Error al optimizar la imagen ${name}:`, error);
+          newFiles.push(file);
+          newPreviews.push(URL.createObjectURL(file));
         }
-      } catch (error) {
-        console.error(`Error al optimizar la imagen ${name}:`, error);
-        const file = files[0];
-        setFormData((prev) => ({ ...prev, [name]: file }));
-        const fileUrl = URL.createObjectURL(file);
-        setPreview(fileUrl);
-      } finally {
-        setIsOptimizingImage(false);
       }
+
+      if (newFiles.length > 0) {
+        setFormData((prev) => ({ ...prev, [name]: [...currentFiles, ...newFiles] }));
+        setPreview([...preview, ...newPreviews]);
+        
+        Swal.fire({
+            icon: "success",
+            title: "Imágenes Añadidas",
+            text: `Se añadieron ${newFiles.length} imágenes.`,
+            timer: 2000,
+            showConfirmButton: false,
+        });
+      }
+      
+      setIsOptimizingImage(false);
     }
+  };
+
+  // ⭐ NUEVA FUNCIÓN: Eliminar imagen individual de la selección
+  const handleRemoveImage = (name, index) => {
+    const { setPreview, preview } = getFileStateAndSetter(name);
+    const currentFiles = formData[name];
+
+    const newFiles = currentFiles.filter((_, i) => i !== index);
+    const newPreviews = preview.filter((_, i) => i !== index);
+
+    setFormData((prev) => ({ ...prev, [name]: newFiles }));
+    setPreview(newPreviews);
   };
 
   const handleChange = (e) => {
@@ -133,7 +157,7 @@ const AsignarTarea = () => {
     if (name === "precio") {
       const numericValue = value.replace(/\D/g, "");
       setFormData((prev) => ({ ...prev, [name]: numericValue }));
-    } else if (files && files[0]) {
+    } else if (files && files.length > 0) {
       handleFileChange(e);
     } else if (type === "checkbox") {
       setFormData((prev) => ({ ...prev, [name]: checked }));
@@ -244,7 +268,13 @@ const AsignarTarea = () => {
 
     const formPayload = new FormData();
     Object.entries(dataToSend).forEach(([key, value]) => {
-      if (value !== null && value !== undefined && key !== 'responsableRol' && key !== 'responsableEmail' && key !== 'fechaLimite') {
+      if (value === null || value === undefined || key === 'responsableRol' || key === 'responsableEmail' || key === 'fechaLimite') return;
+
+      if (key === 'fotoAntes' || key === 'fotoDespues') {
+        if (Array.isArray(value)) {
+          value.forEach((file) => formPayload.append(key, file));
+        }
+      } else {
         formPayload.append(key, value);
       }
     });
@@ -573,40 +603,116 @@ const AsignarTarea = () => {
 
           {/* FOTOS (sin cambios) */}
           <div className="maint-form-group">
-            <label className="maint-form-label">Foto Antes (Evidencia inicial - Opcional):</label>
-            <input type="file" name="fotoAntes" accept="image/*,.pdf" onChange={handleChange} className="maint-form-input" disabled={isOptimizingImage} />
+            <label className="maint-form-label">Foto Antes (Evidencia inicial - Opcional, Máx 6):</label>
+            <input 
+              type="file" 
+              name="fotoAntes" 
+              accept="image/*,.pdf" 
+              onChange={handleChange} 
+              className="maint-form-input" 
+              disabled={isOptimizingImage} 
+              multiple 
+            />
+            
+            {/* GRID PREVIEW FOTO ANTES */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
+              {fotoAntesPreview.map((url, index) => (
+                <div key={index} style={{ position: 'relative', width: '100px', height: '100px', border: '1px solid #ccc', borderRadius: '4px' }}>
+                  {url.endsWith(".pdf") ? (
+                     <a href={url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', textDecoration: 'none', color: '#333', fontSize: '12px' }}>
+                       PDF
+                     </a>
+                  ) : (
+                    <img src={url} alt={`Preview ${index}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }} />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage('fotoAntes', index)}
+                    style={{
+                      position: 'absolute',
+                      top: '-8px',
+                      right: '-8px',
+                      backgroundColor: '#ff4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '20px',
+                      height: '20px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+
             {isOptimizingImage && formData.fotoAntes && (
               <p style={{ color: "#3b1a9a", fontSize: "0.9rem", fontStyle: "italic" }}>
-                🔄 Optimizando imagen Antes a WebP...
+                🔄 Procesando imágenes...
               </p>
-            )}
-            {fotoAntesPreview && (
-              fotoAntesPreview.endsWith(".pdf") ? (
-                <a href={fotoAntesPreview} target="_blank" rel="noreferrer" className="maint-preview-link">
-                  Ver PDF
-                </a>
-              ) : (
-                <img src={fotoAntesPreview} alt="Vista previa de foto Antes" className="maint-thumbnail" />
-              )
             )}
           </div>
           
           <div className="maint-form-group">
-            <label className="maint-form-label">Foto Después (Evidencia final - Opcional):</label>
-            <input type="file" name="fotoDespues" accept="image/*,.pdf" onChange={handleChange} className="maint-form-input" disabled={isOptimizingImage} />
+            <label className="maint-form-label">Foto Después (Evidencia final - Opcional, Máx 6):</label>
+            <input 
+              type="file" 
+              name="fotoDespues" 
+              accept="image/*,.pdf" 
+              onChange={handleChange} 
+              className="maint-form-input" 
+              disabled={isOptimizingImage} 
+              multiple 
+            />
+            
+             {/* GRID PREVIEW FOTO DESPUÉS */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
+              {fotoDespuesPreview.map((url, index) => (
+                <div key={index} style={{ position: 'relative', width: '100px', height: '100px', border: '1px solid #ccc', borderRadius: '4px' }}>
+                  {url.endsWith(".pdf") ? (
+                     <a href={url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', textDecoration: 'none', color: '#333', fontSize: '12px' }}>
+                       PDF
+                     </a>
+                  ) : (
+                    <img src={url} alt={`Preview ${index}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }} />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage('fotoDespues', index)}
+                    style={{
+                      position: 'absolute',
+                      top: '-8px',
+                      right: '-8px',
+                      backgroundColor: '#ff4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '20px',
+                      height: '20px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+
             {isOptimizingImage && formData.fotoDespues && (
               <p style={{ color: "#3b1a9a", fontSize: "0.9rem", fontStyle: "italic" }}>
-                🔄 Optimizando imagen Después a WebP...
+                🔄 Procesando imágenes...
               </p>
-            )}
-            {fotoDespuesPreview && (
-              fotoDespuesPreview.endsWith(".pdf") ? (
-                <a href={fotoDespuesPreview} target="_blank" rel="noreferrer" className="maint-preview-link">
-                  Ver PDF
-                </a>
-              ) : (
-                <img src={fotoDespuesPreview} alt="Vista previa de foto Después" className="maint-thumbnail" />
-              )
             )}
           </div>
 

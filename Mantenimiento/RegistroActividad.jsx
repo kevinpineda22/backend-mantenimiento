@@ -22,20 +22,20 @@ const INITIAL_FORM_DATA = {
   responsableRol: "",
   responsableEmail: "",
   designado: "",
-  fotoAntes: null,
-  fotoDespues: null,
-  enviarCorreo: true, // ⭐ NUEVO: Estado para la casilla de verificación
-  sanidad: false, // ⭐ NUEVO: Estado para sanidad
-  observacion: "", // ⭐ NUEVO: Agregar campo de observación
+  fotoAntes: [], // ⭐ CAMBIO: Array vacío
+  fotoDespues: [], // ⭐ CAMBIO: Array vacío
+  enviarCorreo: true, 
+  sanidad: false, 
+  observacion: "", 
 };
 
 const RegistroActividad = () => {
   const { setLoading, loading } = useOutletContext();
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
-  const [fotoAntesPreview, setFotoAntesPreview] = useState(null);
-  const [fotoDespuesPreview, setFotoDespuesPreview] = useState(null);
+  const [fotoAntesPreview, setFotoAntesPreview] = useState([]); // ⭐ CAMBIO: Array previews
+  const [fotoDespuesPreview, setFotoDespuesPreview] = useState([]); // ⭐ CAMBIO: Array previews
   const [isOptimizingImage, setIsOptimizingImage] = useState(false);
-  const [userEmail, setUserEmail] = useState(""); // ⭐ NUEVO ESTADO PARA EMAIL DEL USUARIO
+  const [userEmail, setUserEmail] = useState("");
 
   const apiBaseUrl = "https://backend-mantenimiento.vercel.app/api";
 
@@ -61,59 +61,88 @@ const RegistroActividad = () => {
   // Helper para determinar qué estado y setter usar para las fotos
   const getFileStateAndSetter = (name) => {
     if (name === "fotoAntes") {
-      return { setPreview: setFotoAntesPreview, fieldName: "Foto Antes" };
+      return { setPreview: setFotoAntesPreview, preview: fotoAntesPreview, fieldName: "Fotos Antes" };
     }
     if (name === "fotoDespues") {
-      return { setPreview: setFotoDespuesPreview, fieldName: "Foto Después" };
+      return { setPreview: setFotoDespuesPreview, preview: fotoDespuesPreview, fieldName: "Fotos Después" };
     }
-    return { setPreview: () => {}, fieldName: "Archivo" };
   };
 
   const handleFileChange = async (e) => {
     const { name, files } = e.target;
-    if (files && files[0]) {
-      const { setPreview, fieldName } = getFileStateAndSetter(name);
+    if (files && files.length > 0) {
+      const { setPreview, preview, fieldName } = getFileStateAndSetter(name);
+      const currentFiles = formData[name] || []; // asegurar array
+      const filesArray = Array.from(files);
 
-      if (!validateFile(files[0], fieldName)) {
-        setPreview(null);
+      if (currentFiles.length + filesArray.length > 6) {
+        Swal.fire({
+          icon: "error",
+          title: "Límite Excedido",
+          text: "Solo puedes subir un mÃ¡ximo de 6 imágenes por campo.",
+          confirmButtonColor: "#89DC00",
+        });
         return;
       }
 
-      try {
-        const file = files[0];
-        setIsOptimizingImage(true);
-        const result = await optimizeImage(file);
+      setIsOptimizingImage(true);
+      const newFiles = [];
+      const newPreviews = [];
 
-        const finalFile = result.file || result;
-        const fileUrl = URL.createObjectURL(finalFile);
+      for (const file of filesArray) {
+        if (!validateFile(file, fieldName)) continue;
 
-        setFormData((prev) => ({ ...prev, [name]: finalFile }));
-        setPreview(fileUrl);
-
-        if (result.originalSize && result.optimizedSize) {
-          Swal.fire({
-            icon: "success",
-            title: "¡Imagen Optimizada!",
-            text: `Tamaño reducido a ${(
-              result.optimizedSize /
-              1024 /
-              1024
-            ).toFixed(2)}MB.`,
-            timer: 3000,
-            timerProgressBar: true,
-            confirmButtonColor: "#89DC00",
-            showConfirmButton: false,
-          });
+        try {
+          // Optimizar cada imagen
+          const result = await optimizeImage(file);
+          const finalFile = result.file || result; // manejar si retorna objeto o archivo
+          
+          newFiles.push(finalFile);
+          newPreviews.push(URL.createObjectURL(finalFile));
+        } catch (error) {
+          console.error(`Error al optimizar la imagen ${name}:`, error);
+          // Fallback al original si falla optimización
+          newFiles.push(file);
+          newPreviews.push(URL.createObjectURL(file));
         }
-      } catch (error) {
-        console.error("Error al optimizar la imagen:", error);
-        const file = files[0];
-        setFormData((prev) => ({ ...prev, [name]: file }));
-        setPreview(URL.createObjectURL(file));
-      } finally {
-        setIsOptimizingImage(false);
       }
+      
+      if (newFiles.length > 0) {
+        // Actualizar estado agregando nuevas imágenes
+        setFormData((prev) => ({ 
+          ...prev, 
+          [name]: [...(prev[name] || []), ...newFiles] 
+        }));
+        
+        // Actualizar previews
+        setPreview((prev) => [...(prev || []), ...newPreviews]);
+        
+        Swal.fire({
+            icon: "success",
+            title: "Imágenes Añadidas",
+            text: `Se añadieron ${newFiles.length} imágenes.`,
+            timer: 2000,
+            showConfirmButton: false,
+        });
+      }
+
+      setIsOptimizingImage(false);
     }
+  };
+
+  // FunciÃ³n para eliminar imagen individual de la selección
+  const handleRemoveImage = (name, index) => {
+    const { setPreview, preview } = getFileStateAndSetter(name);
+    // Obtener array actual de archivos del estado
+    const currentFiles = formData[name];
+
+    // Filtrar fuera el índice eliminado
+    const newFiles = currentFiles.filter((_, i) => i !== index);
+    const newPreviews = preview.filter((_, i) => i !== index);
+
+    // Actualizar estado
+    setFormData((prev) => ({ ...prev, [name]: newFiles }));
+    setPreview(newPreviews);
   };
 
   const handleChange = (e) => {
@@ -121,7 +150,7 @@ const RegistroActividad = () => {
     if (name === "precio") {
       const numericValue = value.replace(/\D/g, "");
       setFormData((prev) => ({ ...prev, [name]: numericValue }));
-    } else if (files && files[0]) {
+    } else if (files && files.length > 0) {
       handleFileChange(e);
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
@@ -150,11 +179,11 @@ const RegistroActividad = () => {
     const nuevoEstado = e.target.value;
 
     if (nuevoEstado === "completado" || nuevoEstado === "no_completado") {
-      if (!formData.fotoDespues) {
+      if (!formData.fotoDespues || formData.fotoDespues.length === 0) {
         Swal.fire({
           icon: "warning",
           title: "Falta Evidencia",
-          text: "Debes adjuntar la 'Foto Después' o documento final antes de marcar la actividad como completada.",
+          text: "Debes adjuntar al menos una 'Foto Después' o documento final antes de marcar la actividad como completada.",
           confirmButtonColor: "#89DC00",
         });
         // Si falta la foto, no actualizamos el estado en el formulario.
@@ -220,44 +249,45 @@ const RegistroActividad = () => {
     // ⭐ Es una validación redundante, pero de seguridad:
     const isCompleting =
       formData.estado === "completado" || formData.estado === "no_completado";
-    if (isCompleting && !formData.fotoDespues) {
+    if (isCompleting && (!formData.fotoDespues || formData.fotoDespues.length === 0)) {
       Swal.fire({
         icon: "warning",
         title: "Falta Evidencia",
-        text: "Debes adjuntar la 'Foto Después' antes de completar.",
+        text: "Debes adjuntar al menos una 'Foto Después' antes de completar.",
         confirmButtonColor: "#89DC00",
       });
       setLoading(false);
       return;
     }
 
-    const dataToSend = {
-      ...formData,
-      responsable: responsableFinal,
-      precio: formData.precio ? parseInt(formData.precio, 10) : null,
-      designado: formData.designado, // ⭐ Incluir el campo designado
-      // ⭐ USAR EMAIL REAL DEL USUARIO AUTENTICADO
-      creador_email: userEmail,
-      // ⭐ MAPEAR fechaFinal para que coincida con AsignarTarea
-      fechaFinal: formData.fechaFinal,
-      observacion: formData.observacion || "", // Agregar observación si existe
-      enviarCorreo: formData.enviarCorreo, // ⭐ Incluir valor de la casilla
-    };
-
     const formPayload = new FormData();
-    Object.entries(dataToSend).forEach(([key, value]) => {
-      if (
-        value !== null &&
-        key !== "responsableRol" &&
-        key !== "responsableEmail"
-      ) {
-        formPayload.append(key, value);
-      }
-    });
+    
+    // Añadir campos de texto
+    formPayload.append("sede", formData.sede);
+    formPayload.append("actividad", formData.actividad);
+    formPayload.append("fechaInicio", formData.fechaInicio);
+    if(formData.fechaFinal) formPayload.append("fechaFinal", formData.fechaFinal);
+    if(formData.precio) formPayload.append("precio", formData.precio);
+    formPayload.append("estado", formData.estado);
+    formPayload.append("responsable", responsableFinal);
+    if(formData.designado) formPayload.append("designado", formData.designado);
+    formPayload.append("creador_email", userEmail);
+    if(formData.observacion) formPayload.append("observacion", formData.observacion);
+    formPayload.append("enviarCorreo", formData.enviarCorreo);
+    formPayload.append("sanidad", formData.sanidad);
 
-    // ⭐ AGREGAR LOGS PARA DEBUG
+    // Añadir archivos (pueden ser múltiples)
+    if (formData.fotoAntes && formData.fotoAntes.length > 0) {
+      formData.fotoAntes.forEach((file) => {
+        formPayload.append("fotoAntes", file);
+      });
+    }
 
-    // Mostrar todos los datos del FormData
+    if (formData.fotoDespues && formData.fotoDespues.length > 0) {
+      formData.fotoDespues.forEach((file) => {
+        formPayload.append("fotoDespues", file);
+      });
+    }
 
     try {
       // ⭐ USAR EL ENDPOINT DE ASIGNAR TAREA
@@ -280,8 +310,8 @@ const RegistroActividad = () => {
         confirmButtonColor: "#89DC00",
       }).then(() => {
         setFormData(INITIAL_FORM_DATA);
-        setFotoAntesPreview(null);
-        setFotoDespuesPreview(null);
+        setFotoAntesPreview([]);
+        setFotoDespuesPreview([]);
       });
     } catch (err) {
       Swal.fire({
@@ -566,7 +596,7 @@ const RegistroActividad = () => {
 
           {/* Fotos */}
           <div className="maint-form-group">
-            <label className="maint-form-label">Foto Antes:</label>
+            <label className="maint-form-label">Foto Antes (Máx 6):</label>
             <input
               type="file"
               name="fotoAntes"
@@ -574,7 +604,46 @@ const RegistroActividad = () => {
               onChange={handleChange}
               className="maint-form-input"
               disabled={isOptimizingImage}
+              multiple // ⭐ PERMITIR MÚLTIPLES ARCHIVOS
             />
+            {/* GRID PREVIEW FOTO ANTES */}
+             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
+              {fotoAntesPreview && fotoAntesPreview.map((url, index) => (
+                <div key={index} style={{ position: 'relative', width: '100px', height: '100px', border: '1px solid #ccc', borderRadius: '4px' }}>
+                  {url.endsWith(".pdf") ? (
+                     <a href={url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', textDecoration: 'none', color: '#333', fontSize: '12px' }}>
+                       PDF
+                     </a>
+                  ) : (
+                    <img src={url} alt={`Preview ${index}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }} />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage('fotoAntes', index)}
+                    style={{
+                      position: 'absolute',
+                      top: '-8px',
+                      right: '-8px',
+                      backgroundColor: '#ff4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '20px',
+                      height: '20px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+
             {isOptimizingImage && (
               <p
                 style={{
@@ -583,31 +652,13 @@ const RegistroActividad = () => {
                   fontStyle: "italic",
                 }}
               >
-                🔄 Optimizando imagen a WebP...
+                🔄 Procesando imágenes...
               </p>
             )}
-            {fotoAntesPreview &&
-              (fotoAntesPreview.endsWith(".pdf") ? (
-                <a
-                  href={fotoAntesPreview}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="maint-preview-link"
-                >
-                  {" "}
-                  Ver PDF{" "}
-                </a>
-              ) : (
-                <img
-                  src={fotoAntesPreview}
-                  alt="Vista previa de foto Antes"
-                  className="maint-thumbnail"
-                />
-              ))}
           </div>
 
           <div className="maint-form-group">
-            <label className="maint-form-label">Foto Después:</label>
+            <label className="maint-form-label">Foto Después (Máx 6):</label>
             <input
               type="file"
               name="fotoDespues"
@@ -615,7 +666,46 @@ const RegistroActividad = () => {
               onChange={handleChange}
               className="maint-form-input"
               disabled={isOptimizingImage}
+              multiple // ⭐ PERMITIR MÚLTIPLES ARCHIVOS
             />
+             {/* GRID PREVIEW FOTO DESPUÉS */}
+             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
+              {fotoDespuesPreview && fotoDespuesPreview.map((url, index) => (
+                <div key={index} style={{ position: 'relative', width: '100px', height: '100px', border: '1px solid #ccc', borderRadius: '4px' }}>
+                  {url.endsWith(".pdf") ? (
+                     <a href={url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', textDecoration: 'none', color: '#333', fontSize: '12px' }}>
+                       PDF
+                     </a>
+                  ) : (
+                    <img src={url} alt={`Preview ${index}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }} />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage('fotoDespues', index)}
+                    style={{
+                      position: 'absolute',
+                      top: '-8px',
+                      right: '-8px',
+                      backgroundColor: '#ff4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '20px',
+                      height: '20px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            
             {isOptimizingImage && (
               <p
                 style={{
@@ -624,27 +714,9 @@ const RegistroActividad = () => {
                   fontStyle: "italic",
                 }}
               >
-                🔄 Optimizando imagen a WebP...
+                🔄 Procesando imágenes...
               </p>
             )}
-            {fotoDespuesPreview &&
-              (fotoDespuesPreview.endsWith(".pdf") ? (
-                <a
-                  href={fotoDespuesPreview}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="maint-preview-link"
-                >
-                  {" "}
-                  Ver PDF{" "}
-                </a>
-              ) : (
-                <img
-                  src={fotoDespuesPreview}
-                  alt="Vista previa de foto Después"
-                  className="maint-thumbnail"
-                />
-              ))}
           </div>
 
           {/* ⭐ NUEVA CASILLA DE VERIFICACIÓN */}
